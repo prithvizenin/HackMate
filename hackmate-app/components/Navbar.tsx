@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { LogOut, User, Bell, Search, Hexagon } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '@/lib/api';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -23,7 +23,7 @@ const Navbar = () => {
 
   useEffect(() => {
     if (user) {
-      axios.get('/api/notifications')
+      api.get('/api/notifications')
         .then(res => {
           const unread = res.data.filter((n: { is_read: boolean }) => !n.is_read).length;
           setUnreadCounts(unread);

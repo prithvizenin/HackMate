@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import db from '@/lib/db';
+import supabase from '@/lib/db';
 import { JWT_SECRET } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
     
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
-    if (!user) {
+    const { data: user, error: userError } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+    if (!user || userError) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 400 });
     }
 

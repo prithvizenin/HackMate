@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import supabase from '@/lib/db';
 import { getUserFromToken } from '@/lib/auth';
 
 // GET /api/teams/[id] - Get team details and members
@@ -14,18 +14,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (isNaN(teamId)) return NextResponse.json({ error: 'Invalid team ID' }, { status: 400 });
 
     // Check if user is a member (even if pending)
-    const membership = db.prepare('SELECT * FROM team_members WHERE team_id = ? AND user_id = ?')
-                         .get(teamId, user.id);
+    const { data: membership } = await supabase.from('team_members')
+      .select('id').eq('team_id', teamId).eq('user_id', user.id).maybeSingle();
+      
     if (!membership) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-    const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(teamId) as any;
+    const { data: team } = await supabase.from('teams').select('*').eq('id', teamId).single();
+    if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
     
-    const members = db.prepare(`
-      SELECT u.id, u.name, u.role as user_role, u.college, tm.role as team_role, tm.status
-      FROM users u
-      JOIN team_members tm ON u.id = tm.user_id
-      WHERE tm.team_id = ?
-    `).all(teamId);
+    const { data: membersRaw, error: memErr } = await supabase.from('team_members')
+      .select('role, status, users!inner(id, name, role, college)')
+      .eq('team_id', teamId);
+
+    const members = (membersRaw || []).map((m: any) => ({
+      id: m.users.id,
+      name: m.users.name,
+      user_role: m.users.role,
+      college: m.users.college,
+      team_role: m.role,
+      status: m.status
+    }));
 
     return NextResponse.json({ ...team, members });
   } catch (err) {

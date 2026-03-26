@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import supabase from '@/lib/db';
 import { getUserFromToken } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
@@ -9,45 +9,49 @@ export async function GET(req: NextRequest) {
     const skill = searchParams.get('skill');
     const search = searchParams.get('search');
     
-    let query = `
-      SELECT DISTINCT u.id, u.name, u.email, u.college, u.year, u.role, u.bio, u.created_at
-      FROM users u
-      LEFT JOIN skills s ON u.id = s.user_id
-      WHERE 1=1
-    `;
-    const params: any[] = [];
+    const selectStr = skill 
+      ? 'id, name, email, college, year, role, bio, created_at, skills!inner(id, skill_name, proficiency)'
+      : 'id, name, email, college, year, role, bio, created_at, skills(id, skill_name, proficiency)';
+
+    let query = supabase.from('users').select(selectStr);
 
     if (role) {
-      query += ` AND u.role = ?`;
-      params.push(role);
+      query = query.eq('role', role);
     }
     if (skill) {
-      query += ` AND s.skill_name LIKE ?`;
-      params.push(`%${skill}%`);
+      query = query.ilike('skills.skill_name', `%${skill}%`);
     }
     if (search) {
-      query += ` AND u.name LIKE ?`;
-      params.push(`%${search}%`);
+      query = query.ilike('name', `%${search}%`);
     }
 
-    query += ` ORDER BY u.created_at DESC`;
+    query = query.order('created_at', { ascending: false });
 
-    const users = db.prepare(query).all(...params) as any[];
+    const { data: users, error } = await query;
+    if (error) throw error;
 
-    // Get current user to check connection status
     const currentUser = getUserFromToken(req);
 
-    const usersWithMetadata = users.map(u => {
-      const skills = db.prepare('SELECT id, skill_name, proficiency FROM skills WHERE user_id = ? LIMIT 3').all(u.id);
+    // Filter duplicates because inner join might return the same user multiple times if they have multiple matching skills
+    const uniqueUsersSet = new Set();
+    const uniqueUsers = ((users as any[]) || []).filter((u: any) => {
+      if (uniqueUsersSet.has(u.id)) return false;
+      uniqueUsersSet.add(u.id);
+      return true;
+    });
+
+    const usersWithMetadata = await Promise.all(uniqueUsers.map(async (u: any) => {
+      // take up to 3 skills
+      const userSkills = (u.skills || []).slice(0, 3);
+      const userWithoutSkills = { ...u };
+      delete (userWithoutSkills as any).skills;
       
       let connectionStatus = 'none';
       if (currentUser) {
-        const tr = db.prepare(`
-          SELECT status, sender_id 
-          FROM team_requests 
-          WHERE (sender_id = ? AND receiver_id = ?) 
-             OR (sender_id = ? AND receiver_id = ?)
-        `).get(currentUser.id, u.id, u.id, currentUser.id) as any;
+        const { data: tr } = await supabase.from('team_requests')
+          .select('status, sender_id')
+          .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${u.id}),and(sender_id.eq.${u.id},receiver_id.eq.${currentUser.id})`)
+          .maybeSingle();
 
         if (tr) {
           if (tr.status === 'accepted') {
@@ -58,8 +62,8 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      return { ...u, skills, connectionStatus };
-    });
+      return { ...userWithoutSkills, skills: userSkills, connectionStatus };
+    }));
 
     return NextResponse.json(usersWithMetadata);
   } catch (err) {

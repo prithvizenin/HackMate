@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import supabase from '@/lib/db';
 import { getUserFromToken } from '@/lib/auth';
 
 // POST /api/teams/[id]/join - Accept team invitation
@@ -13,11 +13,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (isNaN(teamId)) return NextResponse.json({ error: 'Invalid team ID' }, { status: 400 });
 
-    const membership = db.prepare('SELECT * FROM team_members WHERE team_id = ? AND user_id = ? AND status = "pending"')
-                         .get(teamId, user.id) as any;
+    const { data: membership } = await supabase.from('team_members')
+      .select('id').eq('team_id', teamId).eq('user_id', user.id).eq('status', 'pending').maybeSingle();
+      
     if (!membership) return NextResponse.json({ error: 'No pending invitation' }, { status: 404 });
 
-    db.prepare('UPDATE team_members SET status = "joined" WHERE id = ?').run(membership.id);
+    const { error } = await supabase.from('team_members').update({ status: 'joined' }).eq('id', membership.id);
+    if (error) throw error;
 
     return NextResponse.json({ success: true });
   } catch (err) {
