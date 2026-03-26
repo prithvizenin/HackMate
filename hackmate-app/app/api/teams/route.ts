@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 import { getUserFromToken } from '@/lib/auth';
 
 // GET /api/teams - List teams the user is in (including pending invites)
@@ -8,13 +8,22 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const teams = db.prepare(`
-      SELECT t.*, tm.role, tm.status as membership_status
-      FROM teams t
-      JOIN team_members tm ON t.id = tm.team_id
-      WHERE tm.user_id = ?
-      ORDER BY t.created_at DESC
-    `).all(user.id);
+    const { data: teamMembers, error } = await supabase
+      .from('team_members')
+      .select('role, status, team_id, teams(*)')
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+
+    // Supabase can't order easily by joined table properties natively without RPC sometimes,
+    // so let's do soft-sort here based on teams created_at:
+    const teams = (teamMembers || [])
+      .map((tm: any) => ({
+        ...tm.teams,
+        role: tm.role,
+        membership_status: tm.status
+      }))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return NextResponse.json(teams);
   } catch (err) {
@@ -32,18 +41,20 @@ export async function POST(req: NextRequest) {
     const { name } = await req.json();
     if (!name) return NextResponse.json({ error: 'Team name is required' }, { status: 400 });
 
-    const transaction = db.transaction(() => {
-      const teamResult = db.prepare('INSERT INTO teams (name, creator_id) VALUES (?, ?)')
-                           .run(name, user.id);
-      const teamId = teamResult.lastInsertRowid;
+    const { data: team, error: teamError } = await supabase
+      .from('teams')
+      .insert([{ name, creator_id: user.id }])
+      .select('id')
+      .single();
 
-      db.prepare('INSERT INTO team_members (team_id, user_id, role, status) VALUES (?, ?, ?, ?)')
-        .run(teamId, user.id, 'leader', 'joined');
-      
-      return teamId;
-    });
+    if (teamError) throw teamError;
+    const teamId = team.id;
 
-    const teamId = transaction();
+    const { error: memberError } = await supabase
+      .from('team_members')
+      .insert([{ team_id: teamId, user_id: user.id, role: 'leader', status: 'joined' }]);
+
+    if (memberError) throw memberError;
 
     return NextResponse.json({ id: teamId, name, creator_id: user.id });
   } catch (err) {

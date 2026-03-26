@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 import { getUserFromToken } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
@@ -9,45 +9,39 @@ export async function GET(req: NextRequest) {
     const skill = searchParams.get('skill');
     const search = searchParams.get('search');
     
-    let query = `
-      SELECT DISTINCT u.id, u.name, u.email, u.college, u.year, u.role, u.bio, u.created_at
-      FROM users u
-      LEFT JOIN skills s ON u.id = s.user_id
-      WHERE 1=1
-    `;
-    const params: any[] = [];
+    let query = supabase.from('users').select('id, name, email, college, year, role, bio, created_at').order('created_at', { ascending: false });
 
     if (role) {
-      query += ` AND u.role = ?`;
-      params.push(role);
-    }
-    if (skill) {
-      query += ` AND s.skill_name LIKE ?`;
-      params.push(`%${skill}%`);
+      query = query.eq('role', role);
     }
     if (search) {
-      query += ` AND u.name LIKE ?`;
-      params.push(`%${search}%`);
+      query = query.ilike('name', `%${search}%`);
     }
 
-    query += ` ORDER BY u.created_at DESC`;
+    if (skill) {
+      const { data: skillMatches } = await supabase.from('skills').select('user_id').ilike('skill_name', `%${skill}%`);
+      if (!skillMatches || skillMatches.length === 0) {
+        return NextResponse.json([]);
+      }
+      const userIds = skillMatches.map((s: any) => s.user_id);
+      query = query.in('id', userIds);
+    }
 
-    const users = db.prepare(query).all(...params) as any[];
+    const { data: users, error: usersError } = await query;
+    if (usersError) throw usersError;
 
     // Get current user to check connection status
     const currentUser = getUserFromToken(req);
 
-    const usersWithMetadata = users.map(u => {
-      const skills = db.prepare('SELECT id, skill_name, proficiency FROM skills WHERE user_id = ? LIMIT 3').all(u.id);
+    const usersWithMetadata = await Promise.all((users || []).map(async (u: any) => {
+      const { data: skills } = await supabase.from('skills').select('id, skill_name, proficiency').eq('user_id', u.id).limit(3);
       
       let connectionStatus = 'none';
       if (currentUser) {
-        const tr = db.prepare(`
-          SELECT status, sender_id 
-          FROM team_requests 
-          WHERE (sender_id = ? AND receiver_id = ?) 
-             OR (sender_id = ? AND receiver_id = ?)
-        `).get(currentUser.id, u.id, u.id, currentUser.id) as any;
+        const { data: tr } = await supabase.from('team_requests')
+          .select('status, sender_id')
+          .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${u.id}),and(sender_id.eq.${u.id},receiver_id.eq.${currentUser.id})`)
+          .maybeSingle();
 
         if (tr) {
           if (tr.status === 'accepted') {
@@ -58,8 +52,8 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      return { ...u, skills, connectionStatus };
-    });
+      return { ...u, skills: skills || [], connectionStatus };
+    }));
 
     return NextResponse.json(usersWithMetadata);
   } catch (err) {

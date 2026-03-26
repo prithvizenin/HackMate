@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 import { getUserFromToken } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
@@ -7,8 +7,14 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const notifications = db.prepare('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC').all(user.id);
-    return NextResponse.json(notifications);
+    const { data: notifications, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return NextResponse.json(notifications || []);
   } catch (err) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }

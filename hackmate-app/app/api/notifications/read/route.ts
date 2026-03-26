@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { supabase } from '@/lib/supabaseClient';
 import { getUserFromToken } from '@/lib/auth';
 
 export async function PUT(req: NextRequest) {
@@ -7,7 +7,13 @@ export async function PUT(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    db.prepare('UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0').run(user.id);
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false);
+
+    if (error) throw error;
     return NextResponse.json({ message: 'Notifications marked as read' });
   } catch (err) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
