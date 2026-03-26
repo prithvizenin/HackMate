@@ -4,7 +4,7 @@ import { getUserFromToken } from '@/lib/auth';
 
 // GET /api/teams - List teams the user is in (including pending invites)
 export async function GET(req: NextRequest) {
-  const user = getUserFromToken(req);
+  const user = await getUserFromToken(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/teams - Create a new team
 export async function POST(req: NextRequest) {
-  const user = getUserFromToken(req);
+  const user = await getUserFromToken(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
@@ -59,3 +59,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+
+

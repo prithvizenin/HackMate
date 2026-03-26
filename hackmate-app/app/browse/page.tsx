@@ -40,6 +40,12 @@ export default function Browse() {
       router.push('/login');
       return;
     }
+    
+    // Check if profile is complete
+    if (!authLoading && currentUser && (!currentUser.college || !currentUser.role)) {
+      router.push('/profile/setup');
+      return;
+    }
     // Debounce basic implementation for search
     const delayDebounceFn = setTimeout(() => {
       if (currentUser) fetchUsers();

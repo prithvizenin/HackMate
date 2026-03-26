@@ -78,7 +78,9 @@ const Navbar = () => {
 
                 <Link href="/profile/me" className="flex items-center space-x-2 bg-white brutal-border px-4 py-2 hover:bg-lime-400 transition-colors brutal-shadow-hover">
                   <User className="h-5 w-5 font-bold" />
-                  <span className="font-bold text-black uppercase tracking-wide">{user.name.split(' ')[0]}</span>
+                  <span className="font-bold text-black uppercase tracking-wide">
+                    {user?.name ? user.name.split(' ')[0] : 'Explorer'}
+                  </span>
                 </Link>
                 
                 <button 

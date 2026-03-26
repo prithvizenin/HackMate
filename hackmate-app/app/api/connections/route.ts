@@ -4,7 +4,7 @@ import { getUserFromToken } from '@/lib/auth';
 
 // GET /api/connections - List all users who are 'connected' to the current user
 export async function GET(req: NextRequest) {
-  const user = getUserFromToken(req);
+  const user = await getUserFromToken(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
@@ -31,3 +31,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+
+

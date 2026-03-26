@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { data: skills } = await supabase.from('skills').select('id, skill_name, proficiency').eq('user_id', id);
     const { data: achievements } = await supabase.from('achievements').select('id, title, description').eq('user_id', id);
 
-    const currentUser = getUserFromToken(req);
+    const currentUser = await getUserFromToken(req);
     const targetId = parseInt(id);
 
     let connectionStatus = 'none';
@@ -41,3 +41,4 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+

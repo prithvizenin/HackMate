@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '@/lib/api';
+import supabase from '@/lib/db';
 
 const AuthContext = createContext<any>(null);
 
@@ -23,33 +24,86 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return null;
   });
   
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const login = async (email: string, password: string) => {
-    const res = await api.post('/api/auth/login', { email, password });
-    const { token: newToken, user: newUser } = res.data;
-    
-    setToken(newToken);
-    setUser(newUser);
-    localStorage.setItem('hackmate_token', newToken);
-    localStorage.setItem('hackmate_user', JSON.stringify(newUser));
-    return res.data;
+  useEffect(() => {
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setToken(session.access_token);
+        localStorage.setItem('hackmate_token', session.access_token);
+        
+        supabase.from('users').select('*').eq('email', session.user.email).single()
+          .then(({ data }) => {
+            if (data) {
+              setUser(data);
+              localStorage.setItem('hackmate_user', JSON.stringify(data));
+            }
+          });
+      }
+      setLoading(false);
+    });
+
+    // Listen for auth events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        setToken(session.access_token);
+        localStorage.setItem('hackmate_token', session.access_token);
+        
+        const { data, error } = await supabase.from('users').select('*').eq('email', session.user.email).maybeSingle();
+        let userResult = data;
+        
+        // If user is not in public.users, try to sync now
+        if (!userResult && !error && session.user.email) {
+           try {
+             const res = await api.post('/api/auth/sync', { 
+               name: session.user.user_metadata?.name || session.user.email.split('@')[0], 
+               email: session.user.email 
+             });
+             if (res.data && res.data.userId) {
+                const { data: retryData } = await supabase.from('users').select('*').eq('id', res.data.userId).single();
+                userResult = retryData;
+             }
+           } catch (syncErr) {
+             console.error("Auto-sync failed:", syncErr);
+           }
+        }
+
+        if (userResult) {
+          setUser(userResult);
+          localStorage.setItem('hackmate_user', JSON.stringify(userResult));
+        }
+      } else {
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem('hackmate_token');
+        localStorage.removeItem('hackmate_user');
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const signInWithGoogle = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/browse`
+      }
+    });
+    if (error) throw error;
+    return data;
   };
 
-  const register = async (name: string, email: string, password: string) => {
-    await api.post('/api/auth/register', { name, email, password });
-    return login(email, password);
-  };
-
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('hackmate_token');
-    localStorage.removeItem('hackmate_user');
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, setUser }}>
+    <AuthContext.Provider value={{ user, token, loading, signInWithGoogle, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );

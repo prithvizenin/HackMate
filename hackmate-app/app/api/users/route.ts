@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     const { data: users, error } = await query;
     if (error) throw error;
 
-    const currentUser = getUserFromToken(req);
+    const currentUser = await getUserFromToken(req);
 
     // Filter duplicates because inner join might return the same user multiple times if they have multiple matching skills
     const uniqueUsersSet = new Set();
@@ -71,3 +71,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+
+
