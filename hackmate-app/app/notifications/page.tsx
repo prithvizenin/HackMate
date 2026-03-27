@@ -32,8 +32,9 @@ export default function Notifications() {
 
   const markAsRead = async (id: number) => {
     try {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
+      window.dispatchEvent(new CustomEvent('notificationsUpdated'));
       await api.put(`/api/notifications/${id}`);
-      setNotifications(notifications.map(n => n.id === id ? { ...n, is_read: 1 } : n));
     } catch (err) {
       console.error(err);
     }
@@ -41,8 +42,9 @@ export default function Notifications() {
 
   const markAllRead = async () => {
     try {
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
+      window.dispatchEvent(new CustomEvent('notificationsUpdated'));
       await api.put('/api/notifications/read');
-      setNotifications(notifications.map(n => ({ ...n, is_read: 1 })));
     } catch (err) {
       console.error(err);
     }
@@ -101,7 +103,8 @@ export default function Notifications() {
             notifications.map(notif => (
               <div 
                 key={notif.id} 
-                className={`p-6 transition-all border-4 border-black ${notif.is_read ? 'bg-white shadow-[2px_2px_0_0_#000]' : 'bg-pink-100 brutal-shadow -translate-y-1'}`}
+                onClick={() => !notif.is_read && markAsRead(notif.id)}
+                className={`p-6 transition-all border-4 border-black ${notif.is_read ? 'bg-white shadow-[2px_2px_0_0_#000]' : 'bg-pink-100 brutal-shadow -translate-y-1 cursor-pointer'}`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex gap-4">

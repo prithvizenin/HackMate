@@ -22,18 +22,25 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      api.get('/api/notifications')
-        .then(res => {
-          const unread = res.data.filter((n: { is_read: boolean }) => !n.is_read).length;
-          setUnreadCounts(unread);
-        })
-        .catch(err => console.error(err));
-    }
+    const fetchNotifications = () => {
+      if (user) {
+        api.get('/api/notifications')
+          .then(res => {
+            const unread = res.data.filter((n: { is_read: boolean | number }) => !n.is_read).length;
+            setUnreadCounts(unread);
+          })
+          .catch(err => console.error(err));
+      }
+    };
+
+    fetchNotifications();
+
+    window.addEventListener('notificationsUpdated', fetchNotifications);
+    return () => window.removeEventListener('notificationsUpdated', fetchNotifications);
   }, [user]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push('/login');
   };
 

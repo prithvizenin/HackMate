@@ -100,6 +100,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     await supabase.auth.signOut();
+    setToken(null);
+    setUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('hackmate_token');
+      localStorage.removeItem('hackmate_user');
+    }
   };
 
   return (
