@@ -70,6 +70,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         if (userResult) {
+          if (userResult.is_suspended) {
+            alert('Your account has been suspended. Please contact support.');
+            await supabase.auth.signOut();
+            setUser(null);
+            setToken(null);
+            localStorage.removeItem('hackmate_token');
+            localStorage.removeItem('hackmate_user');
+            setLoading(false);
+            return;
+          }
+
+          if (userResult.is_admin) {
+            // Unobtrusively set the admin cookie if they are an admin
+            fetch('/api/auth/set-admin-cookie', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: userResult.email })
+            }).catch(console.error);
+          }
+
           setUser(userResult);
           localStorage.setItem('hackmate_user', JSON.stringify(userResult));
         }
