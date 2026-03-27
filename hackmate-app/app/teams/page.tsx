@@ -201,7 +201,7 @@ export default function TeamsPage() {
           </div>
         </div>
 
-        {/* Pending Invites */}
+        
         <div className="bg-white brutal-card p-8 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           <h2 className="text-3xl font-black text-black uppercase mb-8 border-b-4 border-black pb-4 flex items-center gap-3">
             <Bell className="h-8 w-8 text-pink-500" /> Pending Invites
