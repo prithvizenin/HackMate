@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/db';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const adminToken = req.cookies.get('admin_auth')?.value;
   if (!adminToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { data: teams, error: teamsError } = await supabase
     .from('teams')
     .select('*')
-    .eq('hackathon_id', params.id);
+    .eq('hackathon_id', id);
 
   if (teamsError) return NextResponse.json({ error: teamsError.message }, { status: 500 });
   if (!teams || teams.length === 0) return NextResponse.json([]);

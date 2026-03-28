@@ -10,10 +10,19 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     try {
       const res = await fetch('/api/admin/users');
+      if (res.status === 401) {
+        window.location.href = '/admin/login';
+        return;
+      }
       const data = await res.json();
-      setUsers(data);
+      if (Array.isArray(data)) {
+        setUsers(data);
+      } else {
+        setUsers([]);
+      }
     } catch (err) {
       console.error(err);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -52,7 +61,7 @@ export default function AdminUsers() {
   return (
     <div className="animate-fade-in-up">
       <h1 className="text-5xl font-black uppercase text-black mb-10 tracking-tight bg-white inline-block px-4 py-2 border-4 border-black shadow-[4px_4px_0_0_#000]">Manage Users</h1>
-      
+
       <div className="bg-white border-4 border-black shadow-[8px_8px_0_0_#000] overflow-x-auto">
         <table className="w-full text-left min-w-[800px]">
           <thead className="bg-yellow-400 border-b-4 border-black">
@@ -76,21 +85,21 @@ export default function AdminUsers() {
                 </td>
                 <td className="p-4">
                   <div className="flex flex-wrap gap-2">
-                    <button 
+                    <button
                       onClick={() => toggleAdmin(user.id, user.is_admin)}
                       className={`flex items-center px-3 py-1 font-black text-sm uppercase border-2 border-black transition-transform hover:-translate-y-1 ${user.is_admin ? 'bg-gray-300 text-black' : 'bg-lime-400 text-black'}`}
                     >
                       {user.is_admin ? <ShieldOff className="w-4 h-4 mr-1" /> : <Shield className="w-4 h-4 mr-1" />}
                       {user.is_admin ? 'Revoke' : 'Make Admin'}
                     </button>
-                    <button 
+                    <button
                       onClick={() => toggleSuspend(user.id, user.is_suspended)}
                       className={`flex items-center px-3 py-1 font-black text-sm uppercase border-2 border-black transition-transform hover:-translate-y-1 ${user.is_suspended ? 'bg-cyan-400 text-black' : 'bg-orange-400 text-black'}`}
                     >
                       <AlertOctagon className="w-4 h-4 mr-1" />
                       {user.is_suspended ? 'Unsuspend' : 'Suspend'}
                     </button>
-                    <button 
+                    <button
                       onClick={() => deleteUser(user.id)}
                       className="flex items-center px-3 py-1 font-black text-sm uppercase bg-red-500 text-white border-2 border-black transition-transform hover:-translate-y-1"
                     >
