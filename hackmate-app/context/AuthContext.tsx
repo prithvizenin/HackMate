@@ -107,6 +107,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!user || !user.id) return;
+
+    // Use polling as a reliable fallback since Supabase Realtime 
+    // requires manual database configuration (enabling the table in the publication).
+    const intervalId = setInterval(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('is_suspended')
+          .eq('id', user.id)
+          .single();
+          
+        if (!error && data && data.is_suspended) {
+          await supabase.auth.signOut();
+          setUser(null);
+          setToken(null);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('hackmate_token');
+            localStorage.removeItem('hackmate_user');
+          }
+          window.location.href = '/suspended';
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    }, 5000); // Poll every 5 seconds for near real-time updates
+
+    return () => clearInterval(intervalId);
+  }, [user, user?.id]);
+
   const signInWithGoogle = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
