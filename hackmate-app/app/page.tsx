@@ -4,19 +4,21 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Users, Code, Trophy, ArrowRight, Terminal, Flame, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function Landing() {
   const { user } = useAuth();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (user) {
       router.replace('/browse');
     }
   }, [user, router]);
 
-  if (user) return null; // Avoid flicker before redirect
+  if (mounted && user) return null; // Avoid flicker before redirect
 
   return (
     <div className="overflow-hidden bg-[#fdf8f5]">

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { LogOut, User, Bell, Search, Hexagon } from 'lucide-react';
+import { LogOut, User, Bell, Search, Hexagon, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 
@@ -12,8 +12,11 @@ const Navbar = () => {
   const router = useRouter();
   const [unreadCounts, setUnreadCounts] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
@@ -56,8 +59,9 @@ const Navbar = () => {
           </Link>
 
           <div className="hidden md:flex items-center space-x-6">
-            
-            {user ? (
+            {!mounted ? (
+              <div className="h-10 w-48 opacity-0"></div>
+            ) : user ? (
               <div className="flex items-center space-x-5">
                 <Link href="/browse" className="text-black font-extrabold uppercase hover:underline decoration-4 decoration-pink-500 underline-offset-4 flex items-center gap-2 transition-all">
                   <Search className="h-6 w-6" /> Browse
@@ -118,8 +122,54 @@ const Navbar = () => {
               </div>
             )}
           </div>
+
+          <div className="md:hidden flex items-center">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 bg-white brutal-border text-black transition-colors hover:bg-lime-400"
+            >
+              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
         </div>
       </div>
+
+      {isMobileMenuOpen && (
+        <div className="md:hidden bg-white border-b-4 border-black px-4 pt-2 pb-6 flex flex-col space-y-4 shadow-[0_8px_0_0_rgba(0,0,0,1)]">
+          {!mounted ? null : user ? (
+            <>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/browse" className="text-black font-extrabold uppercase hover:underline flex items-center gap-2">
+                <Search className="h-5 w-5" /> Browse
+              </Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/hackathons" className="text-black font-extrabold uppercase hover:underline">Hackathons</Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/requests" className="text-black font-extrabold uppercase hover:underline">Requests</Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/connections" className="text-black font-extrabold uppercase hover:underline">My Squad</Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/teams" className="text-black font-extrabold uppercase hover:underline">Teams</Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/notifications" className="text-black font-extrabold uppercase hover:underline flex items-center gap-2">
+                <Bell className="h-5 w-5" /> Notifications {unreadCounts > 0 && `(${unreadCounts})`}
+              </Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/profile/me" className="text-black font-extrabold uppercase hover:underline flex items-center gap-2">
+                <User className="h-5 w-5" /> Profile
+              </Link>
+              <button 
+                onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
+                className="text-red-600 font-extrabold uppercase hover:underline text-left flex items-center gap-2"
+              >
+                <LogOut className="h-5 w-5" /> Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/browse" className="text-black font-extrabold uppercase flex items-center gap-2">
+                <Search className="h-5 w-5" /> Browse Hackers
+              </Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/hackathons" className="text-black font-extrabold uppercase">Hackathons</Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/login" className="text-black font-extrabold uppercase">Log in</Link>
+              <Link onClick={() => setIsMobileMenuOpen(false)} href="/register" className="bg-lime-400 text-black px-4 py-3 brutal-border font-extrabold uppercase inline-block text-center mt-2">Sign Up 🚀</Link>
+            </>
+          )}
+        </div>
+      )}
     </nav>
   );
 };
