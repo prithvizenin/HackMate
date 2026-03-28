@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Bell, Check, Clock, Loader2 } from 'lucide-react';
+import { Bell, Check, Clock, Loader2, X } from 'lucide-react';
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -19,8 +21,12 @@ export default function Notifications() {
     }
     const fetchNotifs = async () => {
       try {
-        const res = await api.get('/api/notifications');
-        setNotifications(res.data);
+        const [notifsRes, annRes] = await Promise.all([
+          api.get('/api/notifications'),
+          api.get('/api/admin/announcements')
+        ]);
+        setNotifications(notifsRes.data);
+        setAnnouncements(annRes.data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -32,9 +38,9 @@ export default function Notifications() {
 
   const markAsRead = async (id: number) => {
     try {
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
+      setNotifications(prev => prev.filter(n => n.id !== id));
       window.dispatchEvent(new CustomEvent('notificationsUpdated'));
-      await api.put(`/api/notifications/${id}`);
+      await api.delete(`/api/notifications/${id}`);
     } catch (err) {
       console.error(err);
     }
@@ -42,9 +48,9 @@ export default function Notifications() {
 
   const markAllRead = async () => {
     try {
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
+      setNotifications([]);
       window.dispatchEvent(new CustomEvent('notificationsUpdated'));
-      await api.put('/api/notifications/read');
+      await api.delete('/api/notifications/read');
     } catch (err) {
       console.error(err);
     }
@@ -114,7 +120,14 @@ export default function Notifications() {
               return (
               <div 
                 key={notif.id} 
-                onClick={() => !notif.is_read && markAsRead(notif.id)}
+                onClick={() => {
+                  if (isAnn) {
+                    const matched = announcements.find(a => a.title === messageText) || { title: messageText, content: 'Details unavailable.' };
+                    setSelectedAnnouncement({ ...matched, notificationId: notif.id, is_read: notif.is_read });
+                  } else if (!notif.is_read) {
+                    markAsRead(notif.id);
+                  }
+                }}
                 className={`p-6 transition-all border-4 border-black relative mt-4 ${
                   isAnn 
                     ? (notif.is_read ? 'bg-fuchsia-100 shadow-[2px_2px_0_0_#000]' : 'bg-fuchsia-300 brutal-shadow -translate-y-1 cursor-pointer')
@@ -150,6 +163,52 @@ export default function Notifications() {
           )}
         </div>
       </div>
+
+      {/* Announcement Modal */}
+      {selectedAnnouncement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
+          <div className="bg-yellow-400 border-4 border-black brutal-shadow max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+            <button 
+              onClick={() => setSelectedAnnouncement(null)}
+              className="absolute top-4 right-4 bg-white border-2 border-black p-1 hover:bg-gray-200 transition-colors brutal-shadow"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            
+            <div className="p-8">
+              <div className="inline-block bg-pink-500 text-white font-black uppercase tracking-widest px-3 py-1 text-xs border-2 border-black mb-4">
+                Posted by Admin
+              </div>
+              <h2 className="text-4xl font-black text-black uppercase leading-none mb-6">
+                {selectedAnnouncement.title}
+              </h2>
+              
+              <div className="bg-white border-4 border-black p-6 mb-8 text-lg font-bold leading-relaxed whitespace-pre-wrap">
+                {selectedAnnouncement.content}
+              </div>
+              
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <span className="flex items-center text-sm font-black uppercase tracking-widest text-black bg-white border-2 border-black px-4 py-2 brutal-shadow">
+                  <Clock className="h-4 w-4 mr-2" /> 
+                  {selectedAnnouncement.created_at ? formatDate(selectedAnnouncement.created_at) : 'Just Now'}
+                </span>
+                
+                <button 
+                  onClick={() => {
+                    if (!selectedAnnouncement.is_read) {
+                      markAsRead(selectedAnnouncement.notificationId);
+                    }
+                    setSelectedAnnouncement(null);
+                  }}
+                  className="bg-lime-400 text-black px-6 py-3 font-black uppercase tracking-widest border-3 border-black shadow-[4px_4px_0_0_#000] hover:bg-lime-300 hover:translate-x-1 transition-all flex items-center"
+                >
+                  <Check className="h-5 w-5 mr-2" /> Mark as Read & Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
