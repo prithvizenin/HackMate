@@ -107,19 +107,36 @@ export default function Notifications() {
               You have no notifications yet.
             </div>
           ) : (
-            notifications.map(notif => (
+            notifications.map(notif => {
+              const isAnn = notif.is_announcement || notif.isAnnouncement || notif.type === 'announcement' || (notif.message && notif.message.includes('📢 ANNOUNCEMENT:'));
+              const messageText = notif.message.replace('📢 ANNOUNCEMENT: ', '');
+              
+              return (
               <div 
                 key={notif.id} 
                 onClick={() => !notif.is_read && markAsRead(notif.id)}
-                className={`p-6 transition-all border-4 border-black ${notif.is_read ? 'bg-white shadow-[2px_2px_0_0_#000]' : 'bg-pink-100 brutal-shadow -translate-y-1 cursor-pointer'}`}
+                className={`p-6 transition-all border-4 border-black relative mt-4 ${
+                  isAnn 
+                    ? (notif.is_read ? 'bg-fuchsia-100 shadow-[2px_2px_0_0_#000]' : 'bg-fuchsia-300 brutal-shadow -translate-y-1 cursor-pointer')
+                    : (notif.is_read ? 'bg-white shadow-[2px_2px_0_0_#000]' : 'bg-pink-100 brutal-shadow -translate-y-1 cursor-pointer')
+                }`}
               >
+                {isAnn && (
+                  <span className="absolute -top-4 -left-2 bg-yellow-400 text-black text-xs px-3 py-1 uppercase font-black tracking-widest border-2 border-black shadow-[2px_2px_0_0_#000] rotate-[-2deg]">
+                    📢 Announcement
+                  </span>
+                )}
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex gap-4">
                     {!notif.is_read && (
-                      <div className="h-4 w-4 bg-lime-400 border-2 border-black rounded-full mt-1 shrink-0 animate-pulse"></div>
+                      <div className={`h-4 w-4 rounded-full border-2 border-black mt-1 shrink-0 animate-pulse ${notif.is_announcement ? 'bg-indigo-400' : 'bg-lime-400'}`}></div>
                     )}
-                    <p className={`text-lg leading-relaxed ${notif.is_read ? 'text-gray-800 font-bold' : 'text-black font-black uppercase tracking-wide'}`}>
-                      {notif.message}
+                    <p className={`text-lg leading-relaxed ${
+                      isAnn 
+                        ? (notif.is_read ? 'text-black font-extrabold uppercase' : 'text-black font-black uppercase text-xl')
+                        : (notif.is_read ? 'text-gray-800 font-bold' : 'text-black font-black uppercase tracking-wide')
+                    }`}>
+                      {messageText}
                     </p>
                   </div>
                   <span className="flex items-center text-xs font-black uppercase tracking-widest text-black whitespace-nowrap bg-yellow-400 border-2 border-black px-3 py-1.5 shrink-0 shadow-[2px_2px_0_0_#000]">
@@ -128,7 +145,8 @@ export default function Notifications() {
                   </span>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
