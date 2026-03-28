@@ -71,13 +71,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (userResult) {
           if (userResult.is_suspended) {
-            alert('Your account has been suspended. Please contact support.');
             await supabase.auth.signOut();
             setUser(null);
             setToken(null);
             localStorage.removeItem('hackmate_token');
             localStorage.removeItem('hackmate_user');
             setLoading(false);
+            window.location.href = '/suspended';
             return;
           }
 
