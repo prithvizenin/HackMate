@@ -62,6 +62,9 @@ const Navbar = () => {
                 <Link href="/browse" className="text-black font-extrabold uppercase hover:underline decoration-4 decoration-pink-500 underline-offset-4 flex items-center gap-2 transition-all">
                   <Search className="h-6 w-6" /> Browse
                 </Link>
+                <Link href="/hackathons" className="text-black font-extrabold uppercase hover:underline decoration-4 decoration-pink-500 underline-offset-4 transition-all">
+                  Hackathons
+                </Link>
                 <Link href="/requests" className="text-black font-extrabold uppercase hover:underline decoration-4 decoration-pink-500 underline-offset-4 transition-all">
                   Requests
                 </Link>
@@ -102,6 +105,9 @@ const Navbar = () => {
               <div className="flex items-center space-x-6">
                 <Link href="/browse" className="text-black font-extrabold uppercase hover:underline decoration-4 decoration-pink-500 underline-offset-4 flex items-center gap-2 transition-all mr-4">
                   <Search className="h-6 w-6" /> Browse Hackers
+                </Link>
+                <Link href="/hackathons" className="text-black font-extrabold uppercase hover:underline decoration-4 decoration-pink-500 underline-offset-4 transition-all mr-4">
+                  Hackathons
                 </Link>
                 <Link href="/login" className="font-bold text-black uppercase hover:underline decoration-4 decoration-white underline-offset-4 transition-all text-xl">
                   Log in
