@@ -15,6 +15,9 @@ export async function getUserFromToken(req: NextRequest) {
     .eq('email', user.email)
     .single();
     
-  if (publicUser) return publicUser;
+  if (publicUser) {
+    if (publicUser.is_suspended) return null;
+    return publicUser;
+  }
   return null;
 }

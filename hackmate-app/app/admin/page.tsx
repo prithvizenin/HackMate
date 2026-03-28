@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Trash2, AlertOctagon, Shield, ShieldOff, Loader2 } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<any[]>([]);
@@ -24,12 +25,19 @@ export default function AdminUsers() {
   }, []);
 
   const toggleSuspend = async (id: number, currentStatus: boolean) => {
-    await fetch(`/api/admin/users/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_suspended: !currentStatus }),
-    });
-    fetchUsers();
+    setUsers(users.map(u => u.id === id ? { ...u, is_suspended: !currentStatus } : u));
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_suspended: !currentStatus }),
+      });
+      if (!res.ok) throw new Error('Failed to update suspension status');
+      toast.success(`User ${currentStatus ? 'unsuspended' : 'suspended'}!`);
+    } catch (err) {
+      toast.error('Failed to update suspension status');
+      fetchUsers();
+    }
   };
 
   const toggleAdmin = async (id: number, currentStatus: boolean) => {
@@ -43,14 +51,23 @@ export default function AdminUsers() {
 
   const deleteUser = async (id: number) => {
     if (!confirm('Are you sure you want to permanently delete this user?')) return;
-    await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
-    fetchUsers();
+    const prevUsers = [...users];
+    setUsers(users.filter(u => u.id !== id));
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete user');
+      toast.success('User deleted completely!');
+    } catch (err) {
+      toast.error('Failed to delete user');
+      setUsers(prevUsers);
+    }
   };
 
   if (loading) return <div className="flex items-center justify-center p-20"><Loader2 className="w-12 h-12 animate-spin text-black" /></div>;
 
   return (
     <div className="animate-fade-in-up">
+      <Toaster position="top-right" />
       <h1 className="text-5xl font-black uppercase text-black mb-10 tracking-tight bg-white inline-block px-4 py-2 border-4 border-black shadow-[4px_4px_0_0_#000]">Manage Users</h1>
       
       <div className="bg-white border-4 border-black shadow-[8px_8px_0_0_#000] overflow-x-auto">

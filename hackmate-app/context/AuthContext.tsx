@@ -34,8 +34,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.setItem('hackmate_token', session.access_token);
         
         supabase.from('users').select('*').eq('email', session.user.email).single()
-          .then(({ data }) => {
+          .then(async ({ data }) => {
             if (data) {
+              if (data.is_suspended) {
+                await supabase.auth.signOut();
+                setUser(null);
+                setToken(null);
+                localStorage.removeItem('hackmate_token');
+                localStorage.removeItem('hackmate_user');
+                window.location.href = '/suspended';
+                return;
+              }
               setUser(data);
               localStorage.setItem('hackmate_user', JSON.stringify(data));
             }
@@ -71,13 +80,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (userResult) {
           if (userResult.is_suspended) {
-            alert('Your account has been suspended. Please contact support.');
             await supabase.auth.signOut();
             setUser(null);
             setToken(null);
             localStorage.removeItem('hackmate_token');
             localStorage.removeItem('hackmate_user');
             setLoading(false);
+            window.location.href = '/suspended';
             return;
           }
 
@@ -106,6 +115,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    // Listen for immediate suspension
+    const channel = supabase.channel(`public:users:id=eq.${user.id}`)
+      .on('postgres_changes', 
+          { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${user.id}` }, 
+          async (payload: any) => {
+            if (payload.new.is_suspended) {
+              await supabase.auth.signOut();
+              setUser(null);
+              setToken(null);
+              localStorage.removeItem('hackmate_token');
+              localStorage.removeItem('hackmate_user');
+              window.location.href = '/suspended';
+            }
+          })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
 
   const signInWithGoogle = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
