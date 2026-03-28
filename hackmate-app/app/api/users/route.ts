@@ -40,6 +40,18 @@ export async function GET(req: NextRequest) {
       return true;
     });
 
+    // Fetch all connections for the current user ONCE to avoid N+1 query problem
+    let userConnections: any[] = [];
+    if (currentUser) {
+      const { data: connections } = await supabase.from('team_requests')
+        .select('status, sender_id, receiver_id')
+        .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`);
+      if (connections) {
+        userConnections = connections;
+      }
+    }
+
+
     const usersWithMetadata = await Promise.all(uniqueUsers.map(async (u: any) => {
       // take up to 3 skills
       const userSkills = (u.skills || []).slice(0, 3);
@@ -48,10 +60,10 @@ export async function GET(req: NextRequest) {
       
       let connectionStatus = 'none';
       if (currentUser) {
-        const { data: tr } = await supabase.from('team_requests')
-          .select('status, sender_id')
-          .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${u.id}),and(sender_id.eq.${u.id},receiver_id.eq.${currentUser.id})`)
-          .maybeSingle();
+        const tr = userConnections.find((c: any) => 
+          (c.sender_id === currentUser.id && c.receiver_id === u.id) || 
+          (c.sender_id === u.id && c.receiver_id === currentUser.id)
+        );
 
         if (tr) {
           if (tr.status === 'accepted') {

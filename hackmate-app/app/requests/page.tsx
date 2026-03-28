@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Check, X, Clock, User, Loader2 } from 'lucide-react';
+import { RequestSkeleton } from '@/components/Skeletons';
 
 export default function Requests() {
   const [activeTab, setActiveTab] = useState('incoming');
@@ -39,19 +40,24 @@ export default function Requests() {
   }, [user, authLoading, router, fetchRequests]);
 
   const handleAction = async (id: string, status: string) => {
+    setIncoming(prev => prev.map(req => req.id === id ? { ...req, status } : req));
     try {
       await api.put(`/api/requests/${id}`, { status });
       fetchRequests();
     } catch (err) {
       console.error(err);
+      fetchRequests();
       alert('Failed to update request');
     }
   };
 
   if (authLoading || (loading && incoming.length === 0 && outgoing.length === 0)) return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-80px)]">
-      <Loader2 className="w-16 h-16 animate-spin text-black" />
-      <span className="ml-4 font-black uppercase tracking-widest text-2xl">LOADING...</span>
+    <div className="max-w-4xl mx-auto px-4 py-12 relative min-h-[calc(100vh-80px)] overflow-hidden">
+      <div className="h-20 w-64 bg-gray-200 brutal-border animate-pulse mb-8" />
+      <div className="h-12 w-80 bg-gray-200 brutal-border animate-pulse mb-8" />
+      <div className="space-y-6">
+        {[...Array(4)].map((_, i) => <RequestSkeleton key={i} />)}
+      </div>
     </div>
   );
 

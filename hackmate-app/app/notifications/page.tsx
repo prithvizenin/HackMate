@@ -56,9 +56,16 @@ export default function Notifications() {
   };
 
   if (authLoading || (loading && notifications.length === 0)) return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-80px)]">
-      <Loader2 className="w-16 h-16 animate-spin text-black" />
-      <span className="ml-4 font-black uppercase tracking-widest text-2xl">LOADING...</span>
+    <div className="max-w-3xl mx-auto px-4 py-12 relative min-h-[calc(100vh-80px)] overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-12 gap-6">
+        <div className="h-24 w-80 bg-gray-200 brutal-border animate-pulse" />
+        <div className="h-12 w-40 bg-gray-200 brutal-border animate-pulse" />
+      </div>
+      <div className="space-y-6">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-24 w-full bg-gray-200 brutal-border animate-pulse" />
+        ))}
+      </div>
     </div>
   );
 

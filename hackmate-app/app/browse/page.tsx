@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import UserCard from '@/components/UserCard';
 import { Search, Filter, Loader2, UserMinus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { UserCardSkeleton } from '@/components/Skeletons';
 
 export default function Browse() {
   const [users, setUsers] = useState<any[]>([]);
@@ -128,9 +129,10 @@ export default function Browse() {
 
       <div className="relative z-10 pt-4">
         {authLoading || (loading && users.length === 0) ? (
-          <div className="flex flex-col items-center justify-center p-24 text-black animate-fade-in">
-            <Loader2 className="h-16 w-16 animate-spin mb-4" />
-            <p className="text-black font-black uppercase text-xl tracking-widest">Finding Hackers...</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+            {[...Array(6)].map((_, i) => (
+              <UserCardSkeleton key={i} />
+            ))}
           </div>
         ) : users.length === 0 ? (
           <div className="flex flex-col items-center justify-center bg-white border-4 border-black brutal-shadow rounded-none p-16 mt-8 animate-fade-in-up">

@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Users, Plus, UserPlus, LogOut, Loader2, Crown, Check, X, Shield, Search, Bell } from 'lucide-react';
+import { TeamCardSkeleton } from '@/components/Skeletons';
 
 export default function TeamsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -77,22 +78,26 @@ export default function TeamsPage() {
   };
 
   const handleJoinTeam = async (teamId: number) => {
+    setTeams(prev => prev.map(t => t.id === teamId ? { ...t, membership_status: 'joined', role: 'member' } : t));
     try {
       await api.post(`/api/teams/${teamId}/join`);
       fetchData();
     } catch (err) {
       console.error(err);
+      fetchData();
       alert('Failed to join team');
     }
   };
 
   const handleLeaveTeam = async (teamId: number) => {
     if (!confirm('Are you sure you want to leave this team?')) return;
+    setTeams(prev => prev.filter(t => t.id !== teamId));
     try {
       await api.post(`/api/teams/${teamId}/leave`);
       fetchData();
     } catch (err) {
       console.error(err);
+      fetchData();
       alert('Failed to leave team');
     }
   };
@@ -108,9 +113,25 @@ export default function TeamsPage() {
   };
 
   if (authLoading || loading) return (
-    <div className="flex flex-col items-center justify-center p-24 text-black animate-fade-in min-h-[calc(100vh-80px)]">
-      <Loader2 className="h-16 w-16 animate-spin mb-4" />
-      <p className="text-black font-black uppercase text-xl tracking-widest">Loading Your Squads...</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative min-h-[calc(100vh-80px)] overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+        <div className="h-20 w-64 bg-gray-200 brutal-border animate-pulse" />
+        <div className="h-14 w-48 bg-gray-200 brutal-border animate-pulse" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="bg-white brutal-card p-8">
+          <div className="h-10 w-48 bg-gray-200 brutal-border mb-8 animate-pulse" />
+          <div className="space-y-6">
+            {[...Array(3)].map((_, i) => <TeamCardSkeleton key={i} />)}
+          </div>
+        </div>
+        <div className="bg-white brutal-card p-8">
+          <div className="h-10 w-48 bg-gray-200 brutal-border mb-8 animate-pulse" />
+          <div className="space-y-6">
+            {[...Array(2)].map((_, i) => <TeamCardSkeleton key={i} />)}
+          </div>
+        </div>
+      </div>
     </div>
   );
 

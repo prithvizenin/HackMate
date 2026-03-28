@@ -35,9 +35,17 @@ export default function MyProfile() {
   }, [user, authLoading, router]);
 
   if (authLoading || (loading && !profile)) return (
-    <div className="flex flex-col items-center justify-center p-24 text-black animate-fade-in min-h-[calc(100vh-80px)]">
-      <Loader2 className="h-16 w-16 animate-spin mb-4" />
-      <p className="text-black font-black uppercase text-xl tracking-widest">Loading Hacker Stats...</p>
+    <div className="max-w-4xl mx-auto px-4 py-12 relative min-h-[calc(100vh-80px)] overflow-hidden">
+      <div className="brutal-card bg-gray-100 mb-8 w-full h-80 animate-pulse border-b-8 border-gray-300" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="md:col-span-2 space-y-8">
+          <div className="brutal-card h-64 bg-gray-100 animate-pulse" />
+          <div className="brutal-card h-80 bg-gray-100 animate-pulse" />
+        </div>
+        <div className="space-y-8">
+          <div className="brutal-card h-96 bg-gray-100 animate-pulse" />
+        </div>
+      </div>
     </div>
   );
   if (!profile) return <div className="text-center p-12 text-black bg-red-400 font-black uppercase tracking-widest text-2xl brutal-shadow border-4 border-black max-w-lg mx-auto mt-10">Failed to load profile</div>;
@@ -90,7 +98,7 @@ export default function MyProfile() {
           </section>
 
           <section className="brutal-card p-8 bg-cyan-400">
-            <h2 className="flex items-center text-2xl font-black text-black mb-6 uppercase tracking-widest border-b-4 border-black pb-2 inline-flex">
+            <h2 className="flex items-center text-2xl font-black text-black mb-6 uppercase tracking-widest border-b-4 border-black pb-2">
               <Award className="h-8 w-8 mr-2 text-black" />
               Achievements
             </h2>

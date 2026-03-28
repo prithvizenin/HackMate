@@ -1,27 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import Link from 'next/link';
 import { User, GraduationCap, Briefcase, ChevronRight, UserPlus, CheckCircle, Loader2, Send } from 'lucide-react';
 import SkillBadge from './SkillBadge';
 import api from '@/lib/api';
 
-const UserCard = ({ user: initialUser }: { user: any }) => {
+const UserCard = memo(({ user: initialUser }: { user: any }) => {
   const [status, setStatus] = useState(initialUser.connectionStatus || 'none');
   const [loading, setLoading] = useState(false);
 
   const handleConnect = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setLoading(true);
+    setStatus('pending'); // Optimistic Update
     try {
       await api.post('/api/requests', { receiverId: initialUser.id });
-      setStatus('pending');
     } catch (err) {
       console.error(err);
+      setStatus('none'); // Rollback on error
       alert('Failed to send connection request');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -86,10 +84,9 @@ const UserCard = ({ user: initialUser }: { user: any }) => {
           ) : (
             <button 
               onClick={handleConnect}
-              disabled={loading}
               className="w-full bg-lime-400 border-3 border-black py-2 font-black text-black uppercase tracking-widest text-sm flex items-center justify-center hover:bg-lime-300 transition-all shadow-[4px_4px_0_0_#000] active:translate-y-1 active:shadow-none"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />} Connect
+              <UserPlus className="h-4 w-4 mr-2" /> Connect
             </button>
           )}
         </div>
@@ -106,6 +103,8 @@ const UserCard = ({ user: initialUser }: { user: any }) => {
       </div>
     </div>
   );
-};
+});
+
+UserCard.displayName = 'UserCard';
 
 export default UserCard;
