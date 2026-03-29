@@ -5,19 +5,25 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Briefcase, GraduationCap, Phone, User as UserIcon, Loader2, ArrowRight } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
+const profileSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  college: z.string().min(2, "College name must be at least 2 characters"),
+  year: z.string(),
+  role: z.string(),
+  bio: z.string().max(500, "Bio max length is 500 characters").optional().or(z.literal('')),
+  contact: z.string().min(3, "Please provide a contact link (Discord/LinkedIn)")
+});
+type ProfileValues = z.infer<typeof profileSchema>;
 
 export default function ProfileSetup() {
   const { user, setUser } = useAuth();
   const router = useRouter();
-
-  const [formData, setFormData] = useState({
-    name: '',
-    college: '',
-    year: 'Freshman',
-    role: 'Frontend Dev',
-    bio: '',
-    contact: ''
-  });
+  const queryClient = useQueryClient();
 
   const [skills, setSkills] = useState<{id?: number, skill_name: string, proficiency: string}[]>([]);
   const [newSkill, setNewSkill] = useState('');
@@ -27,46 +33,51 @@ export default function ProfileSetup() {
   const [newAchievementTitle, setNewAchievementTitle] = useState('');
   const [newAchievementDesc, setNewAchievementDesc] = useState('');
 
-  const [loading, setLoading] = useState(true);
-  const [saveLoading, setSaveLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const [initialLoading, setInitialLoading] = useState(true);
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<ProfileValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      name: '',
+      college: '',
+      year: 'Freshman',
+      role: 'Frontend Dev',
+      bio: '',
+      contact: ''
+    }
+  });
 
   useEffect(() => {
     if (!user) {
       router.push('/login');
-      return;
     }
-
-    const fetchData = async () => {
-      try {
-        const res = await api.get(`/api/profile/${user.id}`);
-        const data = res.data;
-        setFormData({
-          name: data.name || '',
-          college: data.college || '',
-          year: data.year || 'Freshman',
-          role: data.role || 'Frontend Dev',
-          bio: data.bio || '',
-          contact: data.contact || ''
-        });
-        setSkills(data.skills || []);
-        setAchievements(data.achievements || []);
-      } catch (err) {
-        console.error('Failed to fetch profile details', err);
-      } finally {
-        setInitialLoading(false);
-        setLoading(false);
-      }
-    };
-
-    fetchData();
   }, [user, router]);
 
-  const handleChange = (e: any) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const { data: profileData, isLoading: initialLoading } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      const res = await api.get(`/api/profile/${user.id}`);
+      return res.data;
+    },
+    enabled: !!user,
+  });
 
-  const addSkill = (e: any) => {
+  useEffect(() => {
+    if (profileData) {
+      reset({
+        name: profileData.name || '',
+        college: profileData.college || '',
+        year: profileData.year || 'Freshman',
+        role: profileData.role || 'Frontend Dev',
+        bio: profileData.bio || '',
+        contact: profileData.contact || ''
+      });
+      setSkills(profileData.skills || []);
+      setAchievements(profileData.achievements || []);
+    }
+  }, [profileData, reset]);
+
+  const addSkill = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!newSkill) return;
     setSkills([...skills, { skill_name: newSkill, proficiency: newProficiency }]);
@@ -74,21 +85,20 @@ export default function ProfileSetup() {
     setNewProficiency('Beginner');
   };
 
-  const removeSkill = async (index: number) => {
+  const removeSkillMutation = useMutation({
+    mutationFn: async (skillId: number) => api.delete(`/api/profile/skills/${skillId}`),
+    onError: () => alert('Failed to delete skill from server')
+  });
+
+  const removeSkill = (index: number) => {
     const skill = skills[index];
     if (skill.id) {
-      try {
-        await api.delete(`/api/profile/skills/${skill.id}`);
-      } catch (err) {
-        console.error('Failed to delete skill', err);
-        alert('Failed to delete skill from server');
-        return;
-      }
+      removeSkillMutation.mutate(skill.id);
     }
     setSkills(skills.filter((_, i) => i !== index));
   };
 
-  const addAchievement = (e: any) => {
+  const addAchievement = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!newAchievementTitle) return;
     setAchievements([...achievements, { title: newAchievementTitle, description: newAchievementDesc }]);
@@ -96,29 +106,23 @@ export default function ProfileSetup() {
     setNewAchievementDesc('');
   };
 
-  const removeAchievement = async (index: number) => {
+  const removeAchievementMutation = useMutation({
+    mutationFn: async (achId: number) => api.delete(`/api/profile/achievements/${achId}`),
+    onError: () => alert('Failed to delete achievement from server')
+  });
+
+  const removeAchievement = (index: number) => {
     const ach = achievements[index];
     if (ach.id) {
-      try {
-        await api.delete(`/api/profile/achievements/${ach.id}`);
-      } catch (err) {
-        console.error('Failed to delete achievement', err);
-        alert('Failed to delete achievement from server');
-        return;
-      }
+      removeAchievementMutation.mutate(ach.id);
     }
     setAchievements(achievements.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaveLoading(true);
-    setError('');
-
-    try {
+  const saveProfileMutation = useMutation({
+    mutationFn: async (formData: ProfileValues) => {
       await api.put('/api/profile', formData);
       
-      // Only post new items (those without an id)
       const newSkills = skills.filter(s => !s.id);
       for (const skill of newSkills) {
         await api.post('/api/profile/skills', skill);
@@ -128,18 +132,26 @@ export default function ProfileSetup() {
       for (const ach of newAch) {
         await api.post('/api/profile/achievements', ach);
       }
-
+      return formData;
+    },
+    onSuccess: (formData) => {
       const updatedUser = { ...user, ...formData };
       setUser(updatedUser);
       localStorage.setItem('hackmate_user', JSON.stringify(updatedUser));
-
+      queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
+      
       setTimeout(() => {
         router.push('/browse');
       }, 300);
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       setError('Failed to setup profile: ' + (err.response?.data?.error || err.message));
-      setSaveLoading(false);
     }
+  });
+
+  const onSubmit = (data: ProfileValues) => {
+    setError('');
+    saveProfileMutation.mutate(data);
   };
 
   if (initialLoading) return (
@@ -166,7 +178,7 @@ export default function ProfileSetup() {
         
         {error && <div className="mb-6 bg-red-400 text-black border-4 border-black brutal-shadow p-4 text-sm font-bold flex items-start animate-fade-in">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="space-y-12">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-12">
           {/* Basic Info Section */}
           <section className="space-y-6">
             <h3 className="text-3xl font-black text-black border-b-4 border-black pb-3 uppercase tracking-widest inline-block bg-lime-400 px-4 pt-2 -rotate-1">Target Identity</h3>
@@ -177,8 +189,9 @@ export default function ProfileSetup() {
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <UserIcon className="h-5 w-5 text-black" />
                   </div>
-                  <input type="text" name="name" value={formData.name} onChange={handleChange} required className="block w-full border-3 border-black py-3 pl-11 text-black bg-white shadow-[4px_4px_0_0_#000] focus:shadow-[6px_6px_0_0_#000] focus:bg-yellow-100 focus:outline-none transition-all font-bold" />
+                  <input type="text" {...register("name")} className="block w-full border-3 border-black py-3 pl-11 text-black bg-white shadow-[4px_4px_0_0_#000] focus:shadow-[6px_6px_0_0_#000] focus:bg-yellow-100 focus:outline-none transition-all font-bold" />
                 </div>
+                {errors.name && <p className="text-red-600 font-bold mt-2 uppercase text-xs">{errors.name.message}</p>}
               </div>
               
               <div>
@@ -187,8 +200,9 @@ export default function ProfileSetup() {
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <Phone className="h-5 w-5 text-black" />
                   </div>
-                  <input type="text" name="contact" value={formData.contact} onChange={handleChange} placeholder="Discord / LinkedIn" required className="block w-full border-3 border-black py-3 pl-11 text-black bg-white shadow-[4px_4px_0_0_#000] focus:shadow-[6px_6px_0_0_#000] focus:bg-yellow-100 focus:outline-none transition-all font-bold" />
+                  <input type="text" {...register("contact")} placeholder="Discord / LinkedIn" className="block w-full border-3 border-black py-3 pl-11 text-black bg-white shadow-[4px_4px_0_0_#000] focus:shadow-[6px_6px_0_0_#000] focus:bg-yellow-100 focus:outline-none transition-all font-bold" />
                 </div>
+                {errors.contact && <p className="text-red-600 font-bold mt-2 uppercase text-xs">{errors.contact.message}</p>}
               </div>
 
               <div>
@@ -197,13 +211,14 @@ export default function ProfileSetup() {
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <GraduationCap className="h-5 w-5 text-black" />
                   </div>
-                  <input type="text" name="college" value={formData.college} onChange={handleChange} required className="block w-full border-3 border-black py-3 pl-11 text-black bg-white shadow-[4px_4px_0_0_#000] focus:shadow-[6px_6px_0_0_#000] focus:bg-yellow-100 focus:outline-none transition-all font-bold" />
+                  <input type="text" {...register("college")} className="block w-full border-3 border-black py-3 pl-11 text-black bg-white shadow-[4px_4px_0_0_#000] focus:shadow-[6px_6px_0_0_#000] focus:bg-yellow-100 focus:outline-none transition-all font-bold" />
                 </div>
+                {errors.college && <p className="text-red-600 font-bold mt-2 uppercase text-xs">{errors.college.message}</p>}
               </div>
 
               <div>
                 <label className="block text-sm font-black uppercase tracking-wider text-black mb-1.5">Year</label>
-                <select name="year" value={formData.year} onChange={handleChange} className="block w-full border-3 border-black py-3 pl-4 pr-8 text-black bg-white shadow-[4px_4px_0_0_#000] focus:shadow-[6px_6px_0_0_#000] focus:bg-yellow-100 focus:outline-none transition-all font-bold appearance-none">
+                <select {...register("year")} className="block w-full border-3 border-black py-3 pl-4 pr-8 text-black bg-white shadow-[4px_4px_0_0_#000] focus:shadow-[6px_6px_0_0_#000] focus:bg-yellow-100 focus:outline-none transition-all font-bold appearance-none">
                   <option>Freshman</option>
                   <option>Sophomore</option>
                   <option>Junior</option>
@@ -218,7 +233,7 @@ export default function ProfileSetup() {
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <Briefcase className="h-5 w-5 text-black" />
                   </div>
-                  <select name="role" value={formData.role} onChange={handleChange} className="block w-full border-3 border-black py-3 pl-11 pr-8 text-black bg-white shadow-[4px_4px_0_0_#000] focus:shadow-[6px_6px_0_0_#000] focus:bg-yellow-100 focus:outline-none transition-all font-bold appearance-none">
+                  <select {...register("role")} className="block w-full border-3 border-black py-3 pl-11 pr-8 text-black bg-white shadow-[4px_4px_0_0_#000] focus:shadow-[6px_6px_0_0_#000] focus:bg-yellow-100 focus:outline-none transition-all font-bold appearance-none">
                     <option>Frontend Dev</option>
                     <option>Backend Dev</option>
                     <option>Full Stack Dev</option>
@@ -232,7 +247,8 @@ export default function ProfileSetup() {
 
               <div className="sm:col-span-2">
                 <label className="block text-sm font-black uppercase tracking-wider text-black mb-1.5">Bio</label>
-                <textarea name="bio" rows={4} value={formData.bio} onChange={handleChange} className="block w-full border-3 border-black py-3 pl-4 text-black bg-white shadow-[4px_4px_0_0_#000] focus:shadow-[6px_6px_0_0_#000] focus:bg-yellow-100 focus:outline-none transition-all font-bold placeholder:text-gray-500" placeholder="Tell everyone what you love building..."></textarea>
+                <textarea rows={4} {...register("bio")} className="block w-full border-3 border-black py-3 pl-4 text-black bg-white shadow-[4px_4px_0_0_#000] focus:shadow-[6px_6px_0_0_#000] focus:bg-yellow-100 focus:outline-none transition-all font-bold placeholder:text-gray-500" placeholder="Tell everyone what you love building..."></textarea>
+                {errors.bio && <p className="text-red-600 font-bold mt-2 uppercase text-xs">{errors.bio.message}</p>}
               </div>
             </div>
           </section>
@@ -310,10 +326,10 @@ export default function ProfileSetup() {
           <div className="pt-6 flex justify-end border-t-8 border-black mt-10 pt-10">
             <button
               type="submit"
-              disabled={saveLoading}
+              disabled={saveProfileMutation.isPending}
               className="group relative flex w-full sm:w-auto justify-center items-center bg-indigo-500 px-8 py-4 text-xl text-black hover:bg-indigo-400 disabled:bg-gray-400 transition-all brutal-btn"
             >
-              {saveLoading ? (
+              {saveProfileMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-6 w-6 animate-spin text-white" />
                   <span className="text-white">SAVING...</span>

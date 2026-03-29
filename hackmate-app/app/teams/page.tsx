@@ -1,36 +1,45 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Users, Plus, UserPlus, LogOut, Loader2, Crown, Check, X, Shield, Search, Bell } from 'lucide-react';
 import { TeamCardSkeleton } from '@/components/Skeletons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import * as Dialog from '@radix-ui/react-dialog';
+
+const createTeamSchema = z.object({
+  name: z.string().min(3, "Team name must be at least 3 characters").max(50),
+});
+type CreateTeamValues = z.infer<typeof createTeamSchema>;
 
 export default function TeamsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const [teams, setTeams] = useState<any[]>([]);
-  const [connections, setConnections] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [createLoading, setCreateLoading] = useState(false);
-  const [newTeamName, setNewTeamName] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<any>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [teamsRes, connRes] = await Promise.all([
-        api.get('/api/teams'),
-        api.get('/api/connections')
-      ]);
-      
-      // Fetch details for each team to get members
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
+
+  const { data: teams = [], isLoading: teamsLoading } = useQuery({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const teamsRes = await api.get('/api/teams');
       const teamsWithDetails = await Promise.all(
         teamsRes.data.map(async (t: any) => {
           try {
+             // We can optimize this later if needed, but keeping original logic
             const detailRes = await api.get(`/api/teams/${t.id}`);
             return { 
               ...detailRes.data, 
@@ -42,77 +51,95 @@ export default function TeamsPage() {
           }
         })
       );
-      
-      setTeams(teamsWithDetails);
-      setConnections(connRes.data);
-    } catch (err) {
-      console.error('Failed to fetch teams data', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return teamsWithDetails;
+    },
+    enabled: !!user,
+  });
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-      return;
-    }
-    if (user) fetchData();
-  }, [user, authLoading, router, fetchData]);
+  const { data: connections = [], isLoading: connLoading } = useQuery({
+    queryKey: ['connections'],
+    queryFn: async () => {
+      const res = await api.get('/api/connections');
+      return res.data;
+    },
+    enabled: !!user,
+  });
 
-  const handleCreateTeam = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTeamName.trim()) return;
-    setCreateLoading(true);
-    try {
-      await api.post('/api/teams', { name: newTeamName });
-      setNewTeamName('');
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateTeamValues>({
+    resolver: zodResolver(createTeamSchema),
+  });
+
+  const createTeamMutation = useMutation({
+    mutationFn: async (data: CreateTeamValues) => api.post('/api/teams', { name: data.name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
       setShowCreateModal(false);
-      fetchData();
-    } catch (err) {
-      console.error(err);
-      alert('Failed to create team');
-    } finally {
-      setCreateLoading(false);
-    }
-  };
+      reset();
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.error || 'Failed to create team');
+    },
+  });
 
-  const handleJoinTeam = async (teamId: number) => {
-    setTeams(prev => prev.map(t => t.id === teamId ? { ...t, membership_status: 'joined', role: 'member' } : t));
-    try {
-      await api.post(`/api/teams/${teamId}/join`);
-      fetchData();
-    } catch (err) {
-      console.error(err);
-      fetchData();
+  const joinTeamMutation = useMutation({
+    mutationFn: async (teamId: number) => api.post(`/api/teams/${teamId}/join`),
+    onMutate: async (teamId) => {
+      await queryClient.cancelQueries({ queryKey: ['teams'] });
+      const previousTeams = queryClient.getQueryData<any[]>(['teams']);
+      if (previousTeams) {
+        queryClient.setQueryData(['teams'], previousTeams.map(t => 
+          t.id === teamId ? { ...t, membership_status: 'joined', role: 'member' } : t
+        ));
+      }
+      return { previousTeams };
+    },
+    onError: (err, teamId, context) => {
+      if (context?.previousTeams) {
+        queryClient.setQueryData(['teams'], context.previousTeams);
+      }
       alert('Failed to join team');
-    }
-  };
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['teams'] }),
+  });
 
-  const handleLeaveTeam = async (teamId: number) => {
-    if (!confirm('Are you sure you want to leave this team?')) return;
-    setTeams(prev => prev.filter(t => t.id !== teamId));
-    try {
-      await api.post(`/api/teams/${teamId}/leave`);
-      fetchData();
-    } catch (err) {
-      console.error(err);
-      fetchData();
+  const leaveTeamMutation = useMutation({
+    mutationFn: async (teamId: number) => api.post(`/api/teams/${teamId}/leave`),
+    onMutate: async (teamId) => {
+      await queryClient.cancelQueries({ queryKey: ['teams'] });
+      const previousTeams = queryClient.getQueryData<any[]>(['teams']);
+      if (previousTeams) {
+        queryClient.setQueryData(['teams'], previousTeams.filter(t => t.id !== teamId));
+      }
+      return { previousTeams };
+    },
+    onError: (err, teamId, context) => {
+      if (context?.previousTeams) queryClient.setQueryData(['teams'], context.previousTeams);
       alert('Failed to leave team');
-    }
-  };
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['teams'] }),
+  });
 
-  const handleInvite = async (userId: number) => {
-    try {
-      await api.post(`/api/teams/${selectedTeam.id}/invite`, { userId });
+  const inviteMutation = useMutation({
+    mutationFn: async ({ teamId, userId }: { teamId: number, userId: number }) => 
+      api.post(`/api/teams/${teamId}/invite`, { userId }),
+    onSuccess: () => {
       alert('Invitation sent!');
       setShowInviteModal(false);
-    } catch (err: any) {
+    },
+    onError: (err: any) => {
       alert(err.response?.data?.error || 'Failed to send invitation');
+    }
+  });
+
+  const handleLeaveTeam = (teamId: number) => {
+    if (confirm('Are you sure you want to leave this team?')) {
+      leaveTeamMutation.mutate(teamId);
     }
   };
 
-  if (authLoading || loading) return (
+  const loading = teamsLoading || connLoading || authLoading;
+
+  if (loading) return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative min-h-[calc(100vh-80px)] overflow-hidden">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div className="h-20 w-64 bg-gray-200 brutal-border animate-pulse" />
@@ -211,7 +238,8 @@ export default function TeamsPage() {
                     )}
                     <button 
                       onClick={() => handleLeaveTeam(team.id)}
-                      className="flex-1 bg-white border-3 border-black px-4 py-2 font-black uppercase text-sm brutal-shadow hover:bg-red-400 transition-colors flex items-center justify-center gap-2"
+                      disabled={leaveTeamMutation.isPending}
+                      className="flex-1 bg-white border-3 border-black px-4 py-2 font-black uppercase text-sm brutal-shadow hover:bg-red-400 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       <LogOut className="h-4 w-4" /> {team.role === 'leader' ? 'Dissolve' : 'Leave'}
                     </button>
@@ -240,14 +268,16 @@ export default function TeamsPage() {
                   </div>
                   <div className="flex gap-2">
                     <button 
-                      onClick={() => handleJoinTeam(team.id)}
-                      className="bg-lime-400 border-3 border-black p-3 brutal-shadow hover:bg-lime-300"
+                      onClick={() => joinTeamMutation.mutate(team.id)}
+                      disabled={joinTeamMutation.isPending}
+                      className="bg-lime-400 border-3 border-black p-3 brutal-shadow hover:bg-lime-300 disabled:opacity-50"
                     >
                       <Check className="h-6 w-6 font-black" />
                     </button>
                     <button 
                       onClick={() => handleLeaveTeam(team.id)}
-                      className="bg-white border-3 border-black p-3 brutal-shadow hover:bg-red-400"
+                      disabled={leaveTeamMutation.isPending}
+                      className="bg-white border-3 border-black p-3 brutal-shadow hover:bg-red-400 disabled:opacity-50"
                     >
                       <X className="h-6 w-6 font-black" />
                     </button>
@@ -259,58 +289,67 @@ export default function TeamsPage() {
         </div>
       </div>
 
-      {/* Create Team Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white brutal-border brutal-shadow-lg p-8 w-full max-w-md animate-scale-up">
+      {/* Create Team Modal via Radix UI */}
+      <Dialog.Root open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-fade-in" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white brutal-border brutal-shadow-lg p-8 w-full max-w-md animate-scale-up">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-3xl font-black uppercase text-black">Form a Squad</h3>
-              <button onClick={() => setShowCreateModal(false)} className="text-black hover:rotate-90 transition-transform"><X className="h-8 w-8" /></button>
+              <Dialog.Title className="text-3xl font-black uppercase text-black">Form a Squad</Dialog.Title>
+              <Dialog.Close asChild>
+                <button className="text-black hover:rotate-90 transition-transform"><X className="h-8 w-8" /></button>
+              </Dialog.Close>
             </div>
-            <form onSubmit={handleCreateTeam}>
+            
+            <form onSubmit={handleSubmit((data) => createTeamMutation.mutate(data))}>
               <div className="mb-6">
                 <label className="block text-xl font-black uppercase mb-2">Team Name</label>
                 <input 
                   type="text" 
                   autoFocus
-                  value={newTeamName}
-                  onChange={(e) => setNewTeamName(e.target.value)}
+                  {...register("name")}
                   className="w-full border-4 border-black p-4 text-xl font-bold brutal-shadow focus:bg-yellow-100 outline-none"
                   placeholder="E.g. Code Wizards"
                 />
+                {errors.name && (
+                  <p className="text-red-600 font-bold mt-2 uppercase text-sm border-2 border-red-600 p-2 bg-red-100">{errors.name.message}</p>
+                )}
               </div>
               <button 
                 type="submit" 
-                disabled={createLoading}
+                disabled={createTeamMutation.isPending}
                 className="w-full bg-lime-400 border-4 border-black py-4 text-xl font-black uppercase brutal-shadow hover:bg-lime-300 disabled:opacity-50"
               >
-                {createLoading ? 'Establishing...' : 'Deploy Team'}
+                {createTeamMutation.isPending ? 'Establishing...' : 'Deploy Team'}
               </button>
             </form>
-          </div>
-        </div>
-      )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
-      {/* Invite Modal */}
-      {showInviteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white brutal-border brutal-shadow-lg p-8 w-full max-w-2xl animate-scale-up">
+      {/* Invite Modal via Radix UI */}
+      <Dialog.Root open={showInviteModal} onOpenChange={setShowInviteModal}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-fade-in" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white brutal-border brutal-shadow-lg p-8 w-full max-w-2xl animate-scale-up">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h3 className="text-3xl font-black uppercase text-black">Invite Hackers</h3>
-                <p className="font-bold text-gray-600 uppercase">Adding members to {selectedTeam?.name}</p>
+                <Dialog.Title className="text-3xl font-black uppercase text-black">Invite Hackers</Dialog.Title>
+                <Dialog.Description className="font-bold text-gray-600 uppercase">Adding members to {selectedTeam?.name}</Dialog.Description>
               </div>
-              <button onClick={() => setShowInviteModal(false)} className="text-black hover:rotate-90 transition-transform"><X className="h-8 w-8" /></button>
+              <Dialog.Close asChild>
+                <button className="text-black hover:rotate-90 transition-transform"><X className="h-8 w-8" /></button>
+              </Dialog.Close>
             </div>
             
-            <div className="max-h-96 overflow-y-auto pr-2 space-y-4">
+            <div className="max-h-96 overflow-y-auto pr-2 space-y-4 cursor-default">
               {connections.length === 0 ? (
                 <div className="text-center py-10 bg-gray-100 border-3 border-black border-dashed">
                   <p className="font-black text-black uppercase italic">You have no connected hackers to invite.</p>
                   <button onClick={() => router.push('/browse')} className="mt-4 text-pink-600 font-bold hover:underline uppercase underline-offset-4">Go Browse Hackers →</button>
                 </div>
               ) : (
-                connections.map(conn => (
+                connections.map((conn: any) => (
                   <div key={conn.id} className="bg-white brutal-border p-4 flex items-center justify-between border-3 border-black">
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 bg-pink-400 border-2 border-black flex items-center justify-center font-black">
@@ -322,8 +361,9 @@ export default function TeamsPage() {
                       </div>
                     </div>
                     <button 
-                      onClick={() => handleInvite(conn.id)}
-                      className="bg-cyan-400 border-3 border-black px-4 py-2 font-black uppercase text-sm brutal-shadow hover:bg-cyan-300"
+                      onClick={() => inviteMutation.mutate({ teamId: selectedTeam.id, userId: conn.id })}
+                      disabled={inviteMutation.isPending}
+                      className="bg-cyan-400 border-3 border-black px-4 py-2 font-black uppercase text-sm brutal-shadow hover:bg-cyan-300 disabled:opacity-50"
                     >
                       Invite
                     </button>
@@ -331,9 +371,10 @@ export default function TeamsPage() {
                 ))
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
     </div>
   );
 }

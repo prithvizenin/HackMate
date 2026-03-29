@@ -3,6 +3,8 @@ import { Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import Navbar from '@/components/Navbar';
+import QueryProvider from '@/components/QueryProvider';
+import RealtimeAnnouncements from '@/components/RealtimeAnnouncements';
 
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'] });
 
@@ -19,14 +21,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={spaceGrotesk.className}>
-        <AuthProvider>
-          <div className="min-h-screen flex flex-col pt-20">
-            <Navbar />
-            <main className="grow">
-              {children}
-            </main>
-          </div>
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <RealtimeAnnouncements />
+            <div className="min-h-screen flex flex-col pt-20">
+              <Navbar />
+              <main className="grow">
+                {children}
+              </main>
+            </div>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );
