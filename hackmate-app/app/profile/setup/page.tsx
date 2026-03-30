@@ -72,8 +72,10 @@ export default function ProfileSetup() {
         bio: profileData.bio || '',
         contact: profileData.contact || ''
       });
+      /* eslint-disable react-hooks/set-state-in-effect */
       setSkills(profileData.skills || []);
       setAchievements(profileData.achievements || []);
+      /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [profileData, reset]);
 

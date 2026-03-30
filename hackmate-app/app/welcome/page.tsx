@@ -70,7 +70,7 @@ export default function WelcomeTransition() {
           >
             <div className="bg-lime-400 border-4 border-black brutal-shadow px-10 py-8 rotate-[-2deg]">
               <h2 className="text-4xl md:text-6xl font-black text-black uppercase tracking-tight">
-                Let's Setup<br/>Your Profile
+                Let&apos;s Setup<br/>Your Profile
               </h2>
             </div>
             <motion.div 
