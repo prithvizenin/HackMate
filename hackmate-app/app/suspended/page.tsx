@@ -31,7 +31,7 @@ export default function SuspendedPage() {
             href="mailto:support@hackmate.tech"
             className="flex items-center justify-center bg-cyan-400 text-black px-8 py-4 brutal-btn border-4 border-black text-xl font-black uppercase hover:bg-cyan-300"
           >
-            <MessageSquareWarning className="mr-3 h-6 w-6" /> Contact Support
+            <MessageSquareWarning className="mr-3 h-6 w-6"  /> Contact Support
           </Link>
 
           <Link
