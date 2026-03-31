@@ -17,6 +17,8 @@ export default function ProfileView() {
   
   const [connectionStatus, setConnectionStatus] = useState('none');
   const [requestLoading, setRequestLoading] = useState(false);
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [connectionMessage, setConnectionMessage] = useState('');
   const { user, loading: authLoading } = useAuth();
   
   useEffect(() => {
@@ -45,8 +47,9 @@ export default function ProfileView() {
   const sendRequest = async () => {
     setRequestLoading(true);
     try {
-      await api.post('/api/requests', { receiverId: id });
+      await api.post('/api/requests', { receiverId: id, message: connectionMessage });
       setConnectionStatus('pending');
+      setShowConnectModal(false);
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to send request');
     } finally {
@@ -135,6 +138,39 @@ export default function ProfileView() {
         </div>
       )}
 
+      {/* Connect Modal */}
+      {showConnectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border-4 border-black brutal-shadow max-w-md w-full p-8 animate-fade-in-up">
+            <h3 className="text-3xl font-black text-black uppercase mb-2 border-b-4 border-black pb-2">Connect</h3>
+            <p className="text-black font-bold mb-6">Send an optional message with your connection request.</p>
+            <textarea
+              className="w-full border-4 border-black p-4 mb-4 font-bold text-black brutal-shadow resize-none focus:outline-none focus:-translate-y-1 transition-transform"
+              rows={4}
+              placeholder="Hey! Let's hack together..."
+              value={connectionMessage}
+              onChange={(e) => setConnectionMessage(e.target.value)}
+            />
+            <div className="flex gap-4">
+              <button
+                onClick={sendRequest}
+                disabled={requestLoading}
+                className="flex-1 bg-cyan-400 text-black border-4 border-black py-3 font-black uppercase tracking-widest hover:bg-cyan-300 disabled:bg-gray-400 disabled:hover:translate-x-0 transition-all hover:-translate-y-1 brutal-shadow flex justify-center items-center"
+              >
+                {requestLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Send Request'}
+              </button>
+              <button
+                onClick={() => setShowConnectModal(false)}
+                disabled={requestLoading}
+                className="bg-red-400 text-black border-4 border-black px-6 py-3 font-black uppercase tracking-widest hover:bg-red-300 transition-all hover:translate-x-1"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Background Blobs */}
       <div className="absolute top-0 left-0 w-40 h-40 bg-pink-400 brutal-border brutal-shadow animate-float rotate-12 hidden md:block" />
       <div className="absolute bottom-20 right-20 w-48 h-48 bg-yellow-400 brutal-border brutal-shadow animate-float hidden md:block" style={{ animationDelay: '2s' }} />
@@ -143,7 +179,7 @@ export default function ProfileView() {
         <div className="h-40 bg-cyan-400 border-b-4 border-black relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-multiply opacity-80"></div>
         <div className="px-8 pb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end -mt-16 relative z-10">
           <div className="flex items-center space-x-6">
-            <div className="h-32 w-32 bg-lime-400 border-4 border-black brutal-shadow flex items-center justify-center text-black rotate-[-3deg]">
+            <div className="h-32 w-32 bg-lime-400 border-4 border-black brutal-shadow flex items-center justify-center text-black -rotate-3">
               <User className="h-16 w-16" />
             </div>
             <div className="mt-16 sm:mt-0 bg-white p-2 px-4 border-4 border-black brutal-shadow rotate-1">
@@ -172,7 +208,7 @@ export default function ProfileView() {
               </button>
             ) : (
               <button 
-                onClick={sendRequest}
+                onClick={() => setShowConnectModal(true)}
                 disabled={requestLoading}
                 className="bg-cyan-400 px-8 py-4 text-sm font-black text-black brutal-btn uppercase tracking-widest hover:bg-cyan-300 disabled:bg-gray-400 flex items-center border-4 border-black brutal-shadow transition-all shadow-[6px_6px_0_0_#000]"
               >

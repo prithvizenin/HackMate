@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { receiverId, receiver_id } = await req.json();
+    const { receiverId, receiver_id, message } = await req.json();
     const finalReceiverId = parseInt(receiverId || receiver_id);
     const sender_id = user.id;
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { data: result, error: insertErr } = await supabase.from('team_requests')
-      .insert([{ sender_id, receiver_id: finalReceiverId, status: 'pending' }])
+      .insert([{ sender_id, receiver_id: finalReceiverId, status: 'pending', ...(message && { message }) }])
       .select('id')
       .single();
       
