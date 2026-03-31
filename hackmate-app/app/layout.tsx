@@ -5,6 +5,8 @@ import { AuthProvider } from '@/context/AuthContext';
 import Navbar from '@/components/Navbar';
 import QueryProvider from '@/components/QueryProvider';
 import RealtimeAnnouncements from '@/components/RealtimeAnnouncements';
+import MouseTrail from '@/components/MouseTrail';
+import LiveBackground from '@/components/LiveBackground';
 
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'] });
 
@@ -23,8 +25,10 @@ export default function RootLayout({
       <body className={spaceGrotesk.className}>
         <QueryProvider>
           <AuthProvider>
+            <LiveBackground />
+            <MouseTrail />
             <RealtimeAnnouncements />
-            <div className="min-h-screen flex flex-col pt-20">
+            <div className="relative z-10 min-h-screen flex flex-col pt-20 bg-transparent">
               <Navbar />
               <main className="grow">
                 {children}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Users, Code, Trophy, ArrowRight, Terminal, Flame, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useState } from 'react';
+import LandingLiveBackground from '@/components/LandingLiveBackground';
 
 export default function Landing() {
   const { user } = useAuth();
@@ -22,7 +23,7 @@ export default function Landing() {
   if (mounted && user) return null; // Avoid flicker before redirect
 
   return (
-    <div className="overflow-hidden bg-[#fdf8f5]">
+    <div className="overflow-hidden bg-[#fdf8f5] relative">
       {/* Funky Marquee */}
       <div className="bg-black text-lime-400 brutal-border border-b-0 py-3 overflow-hidden relative z-20">
         <div className="animate-marquee whitespace-nowrap flex gap-10 font-bold text-xl uppercase tracking-widest">
@@ -38,23 +39,11 @@ export default function Landing() {
       </div>
 
       {/* Hero Section */}
-      <section className="relative px-6 py-20 lg:py-32 flex flex-col items-center justify-center min-h-[85vh] text-center border-b-4 border-black bg-pink-400">
+      <section className="relative px-6 py-20 z-20 overflow-hidden lg:py-32 flex flex-col items-center justify-center min-h-[85vh] text-center border-b-4 border-black bg-pink-400">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLXdpZHRoPSIxIiBvcGFjaXR5PSIwLjEiPjwvcGF0aD4KPC9zdmc+')] z-0 hidden lg:block"></div>
+        <LandingLiveBackground />
         
-        {/* Decorative Floating Elements */}
-        <div className="absolute top-20 left-10 lg:left-32 animate-float hidden md:block z-10">
-          <div className="bg-lime-400 brutal-shadow p-4 border-4 border-black -rotate-12">
-            <Terminal className="h-10 w-10 text-black" />
-          </div>
-        </div>
-        
-        <div className="absolute bottom-20 right-10 lg:right-32 animate-float hidden md:block z-10" style={{ animationDelay: '1s' }}>
-          <div className="bg-cyan-400 brutal-shadow p-4 border-4 border-black rotate-15">
-            <Code className="h-10 w-10 text-black" />
-          </div>
-        </div>
-
-        <div className="relative z-10 max-w-4xl mx-auto animate-fade-in-up">
+        <div className="relative z-20 max-w-4xl mx-auto animate-fade-in-up">
           <div className="inline-block bg-yellow-400 border-4 border-black brutal-shadow px-6 py-2 mb-8 -rotate-3 hover:rotate-0 transition-transform cursor-crosshair">
             <span className="font-extrabold text-black uppercase tracking-widest text-sm lg:text-base">🚀 The #1 App for Hackers</span>
           </div>
@@ -86,7 +75,7 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 bg-cyan-400 border-b-4 border-black relative">
+      <section className="py-24 bg-cyan-400 z-20 border-b-4 border-black relative">
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="text-center mb-20 animate-fade-in-up">
             <h2 className="text-5xl md:text-7xl font-black text-black uppercase mb-6 drop-shadow-[4px_4px_0_#fff]">Why HackMate?</h2>
@@ -131,7 +120,7 @@ export default function Landing() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-32 bg-yellow-400 text-center relative overflow-hidden">
+      <section className="py-32 bg-yellow-400 z-20 text-center relative overflow-hidden">
         <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
         <div className="max-w-4xl mx-auto px-6 relative z-10 animate-fade-in-up">
           <div className="bg-white brutal-border brutal-shadow-lg p-12 md:p-20 rotate-1">
