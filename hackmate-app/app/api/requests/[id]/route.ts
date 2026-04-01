@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import supabase from '@/lib/db';
+import { supabaseAdmin } from '@/lib/db-admin';
 import { getUserFromToken } from '@/lib/auth';
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -13,17 +13,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     
     const { id } = await params;
-    const { data: request } = await supabase.from('team_requests').select('*').eq('id', id).eq('receiver_id', user.id).maybeSingle();
+    const { data: request } = await supabaseAdmin.from('team_requests').select('*').eq('id', id).eq('receiver_id', user.id).maybeSingle();
     
     if (!request) return NextResponse.json({ error: 'Request not found' }, { status: 404 });
 
-    const { error: updateErr } = await supabase.from('team_requests').update({ status }).eq('id', id);
+    const { error: updateErr } = await supabaseAdmin.from('team_requests').update({ status }).eq('id', id);
     if (updateErr) throw updateErr;
 
-    const { data: receiver } = await supabase.from('users').select('name').eq('id', user.id).single();
+    const { data: receiver } = await supabaseAdmin.from('users').select('name').eq('id', user.id).single();
     if (receiver) {
       const msg = status === 'accepted' ? `${receiver.name} accepted your team request!` : `${receiver.name} declined your team request.`;
-      await supabase.from('notifications').insert([{ user_id: request.sender_id, message: msg }]);
+      await supabaseAdmin.from('notifications').insert([{ user_id: request.sender_id, message: msg }]);
     }
 
     return NextResponse.json({ message: `Request ${status}` });
@@ -32,4 +32,3 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
-

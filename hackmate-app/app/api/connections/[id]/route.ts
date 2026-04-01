@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import supabase from '@/lib/db';
+import { supabaseAdmin as supabase } from '@/lib/db-admin';
 import { getUserFromToken } from '@/lib/auth';
 
 // DELETE /api/connections/[id] - Remove a connection (delete the team_request)
