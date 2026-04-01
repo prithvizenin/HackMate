@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { User, GraduationCap, Briefcase, Calendar, Phone, Mail, Award, Edit, Loader2 } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import SkillBadge from '@/components/SkillBadge';
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
@@ -66,9 +67,10 @@ export default function MyProfile() {
         <div className="h-40 bg-cyan-400 border-b-4 border-black relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-multiply opacity-80"></div>
         <div className="px-8 pb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end -mt-16 relative z-10">
           <div className="flex items-center space-x-6">
-            <div className="h-32 w-32 bg-lime-400 border-4 border-black brutal-shadow flex items-center justify-center text-black rotate-[-3deg]">
-              <User className="h-16 w-16" />
-            </div>
+            <Avatar className="h-32 w-32 border-4 border-black brutal-shadow shrink-0 rotate-[-3deg] transition-transform duration-200">
+              <AvatarImage src={`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(profile.email || profile.name || 'guest')}`} alt={profile.name} />
+              <AvatarFallback className="text-5xl">{profile.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+            </Avatar>
             <div className="mt-16 sm:mt-0 bg-white p-2 px-4 border-4 border-black brutal-shadow rotate-1">
               <h1 className="text-4xl font-black text-black tracking-tight uppercase">{profile.name} <span className="text-sm font-bold text-gray-400 ml-2">(You)</span></h1>
               <p className="text-xl font-bold text-black flex items-center mt-1 uppercase tracking-wider">

@@ -3,6 +3,7 @@
 import { memo, useState } from 'react';
 import Link from 'next/link';
 import { User, GraduationCap, Briefcase, ChevronRight, UserPlus, CheckCircle, Loader2, Send } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import SkillBadge from './SkillBadge';
 import api from '@/lib/api';
 
@@ -27,9 +28,10 @@ const UserCard = memo(({ user: initialUser }: { user: any }) => {
     <div className="group bg-white brutal-card flex flex-col h-full hover:-translate-y-2 transition-transform duration-200">
       <div className="p-6 grow flex flex-col">
         <div className="flex items-start space-x-4 mb-5">
-          <div className="h-16 w-16 bg-lime-400 brutal-border brutal-shadow flex items-center justify-center text-black shrink-0 group-hover:rotate-6 transition-transform duration-200">
-            <User className="h-8 w-8" />
-          </div>
+          <Avatar className="h-16 w-16 brutal-border brutal-shadow shrink-0 group-hover:rotate-6 transition-transform duration-200">
+            <AvatarImage src={`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(initialUser.email || initialUser.name || 'guest')}`} alt={initialUser.name} />
+            <AvatarFallback className="text-2xl">{initialUser.name?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+          </Avatar>
           <div className="space-y-1 grow">
             <div className="flex justify-between items-start">
               <h3 className="text-xl font-black text-black uppercase tracking-wide group-hover:underline decoration-4 decoration-pink-500 underline-offset-4 transition-all line-clamp-1">

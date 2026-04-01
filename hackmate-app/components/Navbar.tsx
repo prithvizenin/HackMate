@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { LogOut, User, Bell, Search, Hexagon, Menu, X, MessageSquare } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 
@@ -95,7 +96,10 @@ const Navbar = () => {
                 <div className="h-8 w-1 bg-black mx-1 opacity-20"></div>
 
                 <Link href="/profile/me" className="flex items-center space-x-2 bg-white brutal-border px-4 py-2 hover:bg-lime-400 transition-colors brutal-shadow-hover">
-                  <User className="h-5 w-5 font-bold" />
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage src={`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(user?.email || 'guest')}`} alt={user?.name || 'User'} />
+                    <AvatarFallback className="text-xs">{user?.name ? user.name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
+                  </Avatar>
                   <span className="font-bold text-black uppercase tracking-wide">
                     {user?.name ? user.name.split(' ')[0] : 'Explorer'}
                   </span>
