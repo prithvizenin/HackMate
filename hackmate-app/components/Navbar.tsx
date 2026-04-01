@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { LogOut, User, Bell, Search, Hexagon, Menu, X, MessageSquare } from 'lucide-react';
+import { LogOut, User, Bell, Search, Hexagon, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 
@@ -79,10 +79,7 @@ const Navbar = () => {
                 <Link href="/teams" className="text-black font-extrabold uppercase hover:underline decoration-4 decoration-pink-500 underline-offset-4 transition-all">
                   Teams
                 </Link>
-                <Link href="/messages" className="text-black font-extrabold uppercase hover:underline decoration-4 decoration-pink-500 underline-offset-4 transition-all">
-                  Chats
-                </Link>
-                
+
                 <Link href="/notifications" className="relative p-2.5 bg-pink-400 brutal-border hover:bg-pink-300 transition-colors brutal-shadow-hover group">
                   <Bell className="h-6 w-6 text-black group-hover:animate-wiggle" />
                   {unreadCounts > 0 && (
@@ -149,9 +146,6 @@ const Navbar = () => {
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/requests" className="text-black font-extrabold uppercase hover:underline">Requests</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/connections" className="text-black font-extrabold uppercase hover:underline">My Squad</Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/teams" className="text-black font-extrabold uppercase hover:underline">Teams</Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/messages" className="text-black font-extrabold uppercase hover:underline flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" /> Chats
-              </Link>
               <Link onClick={() => setIsMobileMenuOpen(false)} href="/notifications" className="text-black font-extrabold uppercase hover:underline flex items-center gap-2">
                 <Bell className="h-5 w-5" /> Notifications {unreadCounts > 0 && `(${unreadCounts})`}
               </Link>
