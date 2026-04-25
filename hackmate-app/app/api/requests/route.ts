@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Request already exists or users are connected' }, { status: 400 });
     }
 
+
+
     const { data: result, error: insertErr } = await supabase.from('team_requests')
       .insert([{ sender_id, receiver_id: finalReceiverId, status: 'pending', ...(message && { message }) }])
       .select('id')

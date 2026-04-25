@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Check, X, Clock, User, Loader2 } from 'lucide-react';
 import { RequestSkeleton } from '@/components/Skeletons';
+import supabase from '@/lib/db';
+
 
 export default function Requests() {
   const [activeTab, setActiveTab] = useState('incoming');
@@ -38,6 +40,31 @@ export default function Requests() {
     }
     if (user) fetchRequests();
   }, [user, authLoading, router, fetchRequests]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const requestChannel = supabase
+      .channel('requests-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'team_requests',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        (payload) => {
+          fetchRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(requestChannel);
+    };
+  }, [user, fetchRequests]);
+
 
   const handleAction = async (id: string, status: string) => {
     setIncoming(prev => prev.map(req => req.id === id ? { ...req, status } : req));

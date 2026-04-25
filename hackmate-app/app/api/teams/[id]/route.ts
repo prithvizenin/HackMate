@@ -19,7 +19,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       
     if (!membership) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
-    const { data: team } = await supabase.from('teams').select('*').eq('id', teamId).single();
+    const { data: team } = await supabase.from('teams').select('*, hackathons(title)').eq('id', teamId).single();
+
     if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
     
     const { data: membersRaw, error: memErr } = await supabase.from('team_members')

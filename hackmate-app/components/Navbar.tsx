@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout }= useAuth();
   const router = useRouter();
   const [unreadCounts, setUnreadCounts] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -114,20 +114,13 @@ const Navbar = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center space-x-6">
-                <Link href="/browse" className="text-black font-extrabold uppercase hover:underline decoration-4 decoration-pink-500 underline-offset-4 flex items-center gap-2 transition-all mr-4">
-                  <Search className="h-6 w-6" /> Browse Hackers
-                </Link>
-                <Link href="/hackathons" className="text-black font-extrabold uppercase hover:underline decoration-4 decoration-pink-500 underline-offset-4 transition-all mr-4">
-                  Hackathons
-                </Link>
-                <Link href="/login" className="font-bold text-black uppercase hover:underline decoration-4 decoration-white underline-offset-4 transition-all text-xl">
-                  Log in
-                </Link>
-                <Link href="/register" className="bg-lime-400 text-black px-8 py-3 brutal-btn text-xl">
-                  Sign Up 🚀
-                </Link>
-              </div>
+               <div className="flex items-center space-x-6">
+                 <Link href="/login" className="font-bold text-black uppercase hover:underline decoration-4 decoration-white underline-offset-4 transition-all text-xl bg-lime-400 px-8 py-3 brutal-btn brutal-shadow">
+                   Sign In
+                 </Link>
+               </div>
+
+
             )}
           </div>
 
@@ -170,14 +163,10 @@ const Navbar = () => {
               </button>
             </>
           ) : (
-            <>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/browse" className="text-black font-extrabold uppercase flex items-center gap-2">
-                <Search className="h-5 w-5" /> Browse Hackers
-              </Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/hackathons" className="text-black font-extrabold uppercase">Hackathons</Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/login" className="text-black font-extrabold uppercase">Log in</Link>
-              <Link onClick={() => setIsMobileMenuOpen(false)} href="/register" className="bg-lime-400 text-black px-4 py-3 brutal-border font-extrabold uppercase inline-block text-center mt-2">Sign Up 🚀</Link>
-            </>
+             <>
+               <Link onClick={() => setIsMobileMenuOpen(false)} href="/login" className="bg-lime-400 text-black px-4 py-3 brutal-border font-extrabold uppercase inline-block text-center mt-2 brutal-shadow hover:bg-lime-300 transition-colors">Sign In</Link>
+             </>
+
           )}
         </div>
       )}

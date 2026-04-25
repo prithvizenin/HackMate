@@ -36,12 +36,13 @@ export default function Login() {
           <div className="mx-auto h-16 w-16 bg-lime-400 border-4 border-black brutal-shadow flex items-center justify-center mb-6 -rotate-3 hover:rotate-3 transition-transform">
             <LogIn className="h-8 w-8 text-black" />
           </div>
-          <h2 className="mt-2 text-center text-4xl font-black tracking-tight text-black uppercase">
-            Welcome Back
-          </h2>
-          <p className="mt-2 text-center text-lg text-black font-bold">
-            Sign in to find your next hackathon team
-          </p>
+           <h2 className="mt-2 text-center text-4xl font-black tracking-tight text-black uppercase">
+             Sign In
+           </h2>
+           <p className="mt-2 text-center text-lg text-black font-bold">
+             Get started with your Google account
+           </p>
+
         </div>
         
         <div className="mt-8 space-y-6">
@@ -88,8 +89,9 @@ export default function Login() {
             </button>
             
             <p className="text-center text-sm font-bold text-gray-600 mt-6">
-              New to HackMate? No problem! Just sign in with Google to create your account instantly.
+              Sign in with Google to get started instantly.
             </p>
+
           </div>
           
           <div className="text-center text-sm font-bold pt-4">

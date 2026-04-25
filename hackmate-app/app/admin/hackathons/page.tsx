@@ -51,27 +51,31 @@ export default function AdminHackathons() {
     }
   });
 
-  const createMutation = useMutation({
-    mutationFn: async (data: HackathonFormValues) => {
-      const res = await fetch('/api/admin/hackathons', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          title: data.title, 
-          description: data.description, 
-          start_date: data.startDate || null, 
-          end_date: data.endDate || null 
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to create hackathon');
-      return res.json();
-    },
-    onSuccess: () => {
-      reset();
-      queryClient.invalidateQueries({ queryKey: ['admin_hackathons'] });
-    },
-    onError: () => alert('Failed to create hackathon')
-  });
+    const createMutation = useMutation({
+      mutationFn: async (data: HackathonFormValues) => {
+        const res = await fetch('/api/admin/hackathons', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            title: data.title, 
+            description: data.description, 
+            start_date: data.startDate || null, 
+            end_date: data.endDate || null 
+          }),
+        });
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to create hackathon');
+        }
+        return res.json();
+      },
+      onSuccess: () => {
+        reset();
+        queryClient.invalidateQueries({ queryKey: ['admin_hackathons'] });
+      },
+      onError: (err) => alert(err.message || 'Failed to create hackathon')
+    });
+
 
   const loadTeams = (hackathonId: number) => {
     if (expandedHackathon === hackathonId) {

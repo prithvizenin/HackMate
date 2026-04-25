@@ -5,6 +5,9 @@ import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Users, Plus, UserPlus, LogOut, Loader2, Crown, Check, X, Shield, Search, Bell } from 'lucide-react';
+import supabase from '@/lib/db';
+
+
 import { TeamCardSkeleton } from '@/components/Skeletons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -14,6 +17,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 
 const createTeamSchema = z.object({
   name: z.string().min(3, "Team name must be at least 3 characters").max(50),
+  hackathon_id: z.string().min(1, "Please select a hackathon"),
 });
 type CreateTeamValues = z.infer<typeof createTeamSchema>;
 
@@ -31,6 +35,31 @@ export default function TeamsPage() {
       router.push('/login');
     }
   }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const teamChannel = supabase
+      .channel('teams-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'team_members',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          queryClient.invalidateQueries({ queryKey: ['teams'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(teamChannel);
+    };
+  }, [user, queryClient]);
+
 
   const { data: teams = [], isLoading: teamsLoading } = useQuery({
     queryKey: ['teams'],
@@ -65,21 +94,31 @@ export default function TeamsPage() {
     enabled: !!user,
   });
 
+  const { data: hackathons = [], isLoading: hacksLoading } = useQuery({
+    queryKey: ['platform-hackathons'],
+    queryFn: async () => {
+      const res = await api.get('/api/admin/hackathons');
+      return res.data;
+    },
+    enabled: !!user,
+  });
+
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateTeamValues>({
     resolver: zodResolver(createTeamSchema),
   });
 
-  const createTeamMutation = useMutation({
-    mutationFn: async (data: CreateTeamValues) => api.post('/api/teams', { name: data.name }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] });
-      setShowCreateModal(false);
-      reset();
-    },
-    onError: (err: any) => {
-      alert(err.response?.data?.error || 'Failed to create team');
-    },
-  });
+    const createTeamMutation = useMutation({
+      mutationFn: async (data: CreateTeamValues) => api.post('/api/teams', data),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['teams'] });
+        setShowCreateModal(false);
+        reset();
+      },
+      onError: (err: any) => {
+        alert(err.response?.data?.error || 'Failed to create team');
+      },
+    });
+
 
   const joinTeamMutation = useMutation({
     mutationFn: async (teamId: number) => api.post(`/api/teams/${teamId}/join`),
@@ -137,7 +176,7 @@ export default function TeamsPage() {
     }
   };
 
-  const loading = teamsLoading || connLoading || authLoading;
+  const loading = teamsLoading || hacksLoading || authLoading;
 
   if (loading) return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative min-h-[calc(100vh-80px)] overflow-hidden">
@@ -197,55 +236,74 @@ export default function TeamsPage() {
             {teams.filter(t => t.membership_status === 'joined').length === 0 ? (
               <p className="text-gray-500 font-bold italic py-10 text-center uppercase tracking-widest">You haven&apos;t joined any teams yet.</p>
             ) : (
-              teams.filter(t => t.membership_status === 'joined').map((team) => (
-                <div key={team.id} className="bg-yellow-100 brutal-border p-6 relative group transition-transform hover:-translate-y-1">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-2xl font-black text-black uppercase">{team.name}</h3>
-                      <p className="text-sm font-bold text-gray-600">Established {new Date(team.created_at).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
-                    <p className="text-xs font-black uppercase mb-3 text-gray-500">Squad Members</p>
-                    <div className="flex flex-wrap gap-3">
-                      {team.members?.map((member: any) => (
-                        <div key={member.id} className="relative group/member">
-                          <div className={`h-12 w-12 border-2 border-black flex items-center justify-center font-black text-lg brutal-shadow-sm ${member.team_role === 'leader' ? 'bg-yellow-400' : 'bg-white'}`}>
-                            {member.name[0]}
-                          </div>
-                          {member.team_role === 'leader' && (
-                            <div className="absolute -top-4 -right-2 rotate-12 drop-shadow-[2px_2px_0_#000]">
-                              <Crown className="h-6 w-6 text-yellow-500 fill-yellow-500" />
-                            </div>
-                          )}
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-black text-white text-[10px] px-2 py-1 opacity-0 group-hover/member:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
-                            {member.name} {member.status === 'pending' ? '(Invited)' : ''}
-                          </div>
+               teams.filter(t => t.membership_status === 'joined').map((team) => (
+                 <div key={team.id} className="bg-white brutal-border p-6 relative group transition-all hover:-translate-y-2 hover:shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
+                   <div className="flex justify-between items-start mb-6">
+                     <div className="flex items-center gap-3">
+                       <div className="h-12 w-12 bg-yellow-400 border-2 border-black flex items-center justify-center rotate-3 brutal-shadow-sm">
+                         <Users className="h-6 w-6 text-black" />
+                       </div>
+                        <div>
+                          <h3 className="text-2xl font-black text-black uppercase leading-none">{team.name}</h3>
+                          <p className="text-xs font-bold text-gray-500 uppercase mt-1">
+                            {team.hackathons?.title ? `For ${team.hackathons.title}` : 'General Team'} • Established {new Date(team.created_at).toLocaleDateString()}
+                          </p>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3">
-                    {team.role === 'leader' && (
-                      <button 
-                        onClick={() => { setSelectedTeam(team); setShowInviteModal(true); }}
-                        className="flex-1 bg-cyan-400 border-3 border-black px-4 py-2 font-black uppercase text-sm brutal-shadow hover:bg-cyan-300 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <UserPlus className="h-4 w-4" /> Invite
-                      </button>
-                    )}
-                    <button 
-                      onClick={() => handleLeaveTeam(team.id)}
-                      disabled={leaveTeamMutation.isPending}
-                      className="flex-1 bg-white border-3 border-black px-4 py-2 font-black uppercase text-sm brutal-shadow hover:bg-red-400 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <LogOut className="h-4 w-4" /> {team.role === 'leader' ? 'Dissolve' : 'Leave'}
-                    </button>
-                  </div>
-                </div>
-              ))
+
+                     </div>
+                     <div className="flex gap-2">
+                       {team.role === 'leader' && (
+                         <div className="bg-yellow-400 border-2 border-black px-2 py-0.5 text-[10px] font-black uppercase brutal-shadow-sm">Leader</div>
+                       )}
+                     </div>
+                   </div>
+ 
+                   <div className="mb-6">
+                     <p className="text-xs font-black uppercase mb-3 text-gray-400 flex items-center gap-2">
+                       <span className="w-2 h-2 bg-black rounded-full"></span> Squad Members
+                     </p>
+                      <div className="flex flex-wrap gap-4">
+                        {team.members?.map((member: any) => (
+                          <div key={member.id} className="flex items-center gap-3 bg-white border-2 border-black p-2 brutal-shadow-sm transition-transform hover:scale-105 group/member">
+                            <div className={`h-10 w-10 border-2 border-black flex items-center justify-center font-black text-lg ${member.team_role === 'leader' ? 'bg-yellow-400' : 'bg-gray-100'}`}>
+                              {member.name[0]}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-black uppercase leading-tight">{member.name}</span>
+                              <span className="text-[10px] font-bold text-gray-500 uppercase leading-none">
+                                {member.user_role || 'Hacker'} {member.status === 'pending' ? ' (Invited)' : ''}
+                              </span>
+
+                            </div>
+                            {member.team_role === 'leader' && (
+                              <Crown className="h-4 w-4 text-yellow-600 fill-yellow-600 ml-1" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                   </div>
+                   
+                   <div className="flex gap-3 pt-4 border-t-2 border-black/10">
+                     {team.role === 'leader' && (
+                       <button 
+                         onClick={() => { setSelectedTeam(team); setShowInviteModal(true); }}
+                         className="flex-1 bg-cyan-400 border-2 border-black px-4 py-2 font-black uppercase text-xs brutal-shadow hover:bg-cyan-300 transition-all flex items-center justify-center gap-2 active:translate-y-1 active:shadow-none"
+                       >
+                         <UserPlus className="h-4 w-4" /> Invite
+                       </button>
+                     )}
+                     <button 
+                       onClick={() => handleLeaveTeam(team.id)}
+                       disabled={leaveTeamMutation.isPending}
+                       className="flex-1 bg-white border-2 border-black px-4 py-2 font-black uppercase text-xs brutal-shadow hover:bg-red-400 transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:translate-y-1 active:shadow-none"
+                     >
+                       <LogOut className="h-4 w-4" /> {team.role === 'leader' ? 'Dissolve' : 'Leave'}
+                     </button>
+                   </div>
+                 </div>
+               ))
+
             )}
           </div>
         </div>
@@ -301,28 +359,46 @@ export default function TeamsPage() {
               </Dialog.Close>
             </div>
             
-            <form onSubmit={handleSubmit((data) => createTeamMutation.mutate(data))}>
-              <div className="mb-6">
-                <label className="block text-xl font-black uppercase mb-2">Team Name</label>
-                <input 
-                  type="text" 
-                  autoFocus
-                  {...register("name")}
-                  className="w-full border-4 border-black p-4 text-xl font-bold brutal-shadow focus:bg-yellow-100 outline-none"
-                  placeholder="E.g. Code Wizards"
-                />
-                {errors.name && (
-                  <p className="text-red-600 font-bold mt-2 uppercase text-sm border-2 border-red-600 p-2 bg-red-100">{errors.name.message}</p>
-                )}
-              </div>
-              <button 
-                type="submit" 
-                disabled={createTeamMutation.isPending}
-                className="w-full bg-lime-400 border-4 border-black py-4 text-xl font-black uppercase brutal-shadow hover:bg-lime-300 disabled:opacity-50"
-              >
-                {createTeamMutation.isPending ? 'Establishing...' : 'Deploy Team'}
-              </button>
-            </form>
+             <form onSubmit={handleSubmit((data) => createTeamMutation.mutate(data))}>
+               <div className="mb-6">
+                 <label className="block text-xl font-black uppercase mb-2">Team Name</label>
+                 <input 
+                   type="text" 
+                   autoFocus
+                   {...register("name")}
+                   className="w-full border-4 border-black p-4 text-xl font-bold brutal-shadow focus:bg-yellow-100 outline-none"
+                   placeholder="E.g. Code Wizards"
+                 />
+                 {errors.name && (
+                   <p className="text-red-600 font-bold mt-2 uppercase text-sm border-2 border-red-600 p-2 bg-red-100">{errors.name.message}</p>
+                 )}
+               </div>
+               <div className="mb-6">
+                 <label className="block text-xl font-black uppercase mb-2">Select Hackathon</label>
+                 <select 
+                   {...register("hackathon_id")}
+                   className="w-full border-4 border-black p-4 text-xl font-bold brutal-shadow focus:bg-yellow-100 outline-none bg-white"
+                 >
+                   <option value="">-- Choose a Hackathon --</option>
+                   {hackathons.map((hack: any) => (
+                     <option key={hack.id} value={hack.id}>
+                       {hack.title}
+                     </option>
+                   ))}
+                 </select>
+                 {errors.hackathon_id && (
+                   <p className="text-red-600 font-bold mt-2 uppercase text-sm border-2 border-red-600 p-2 bg-red-100">{errors.hackathon_id.message}</p>
+                 )}
+               </div>
+               <button 
+                 type="submit" 
+                 disabled={createTeamMutation.isPending}
+                 className="w-full bg-lime-400 border-4 border-black py-4 text-xl font-black uppercase brutal-shadow hover:bg-lime-300 disabled:opacity-50"
+               >
+                 {createTeamMutation.isPending ? 'Establishing...' : 'Deploy Team'}
+               </button>
+             </form>
+
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>

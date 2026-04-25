@@ -56,21 +56,15 @@ export default function Landing() {
             Stop building alone. Find developers, designers, and visionaries to ship your next crazy idea.
           </p>
           
-          <div className="mt-8 flex flex-col sm:flex-row gap-6 justify-center items-center">
-            <Link 
-              href="/register" 
-              className="w-full sm:w-auto bg-lime-400 text-black px-10 py-5 brutal-btn text-xl group flex items-center justify-center hover:bg-lime-300"
-            >
-              Get Started
-              <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-2 transition-transform" />
-            </Link>
-            <Link 
-              href="/login" 
-              className="w-full sm:w-auto bg-white text-black px-10 py-5 brutal-btn text-xl hover:bg-gray-100"
-            >
-              Log In
-            </Link>
-          </div>
+           <div className="mt-8 flex flex-col sm:flex-row gap-6 justify-center items-center">
+             <Link 
+               href="/login" 
+               className="w-full sm:w-auto bg-lime-400 text-black px-10 py-5 brutal-btn text-xl group flex items-center justify-center hover:bg-lime-300"
+             >
+               Get Started
+               <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-2 transition-transform" />
+             </Link>
+           </div>
         </div>
       </section>
 
@@ -128,13 +122,14 @@ export default function Landing() {
             <p className="text-xl md:text-2xl text-black font-bold mb-10">
               Join hundreds of hackers who are already shipping cool things together.
             </p>
-            <Link 
-              href="/register" 
-              className="inline-flex bg-pink-500 text-white px-12 py-6 brutal-btn text-2xl hover:bg-pink-400 items-center justify-center"
-            >
-              <Flame className="mr-3 h-8 w-8 animate-wiggle" />
-              Create Account
-            </Link>
+             <Link 
+               href="/login" 
+               className="inline-flex bg-pink-500 text-white px-12 py-6 brutal-btn text-2xl hover:bg-pink-400 items-center justify-center"
+             >
+               <Flame className="mr-3 h-8 w-8 animate-wiggle" />
+               Sign In
+             </Link>
+
           </div>
         </div>
       </section>

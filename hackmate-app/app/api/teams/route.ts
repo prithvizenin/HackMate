@@ -33,18 +33,18 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getUserFromToken(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+ 
   try {
-    const { name } = await req.json();
+    const { name, hackathon_id } = await req.json();
     if (!name) return NextResponse.json({ error: 'Team name is required' }, { status: 400 });
-
+ 
     const { data: team, error: teamErr } = await supabase.from('teams')
-      .insert([{ name, creator_id: user.id }])
+      .insert([{ name, creator_id: user.id, hackathon_id }])
       .select('id')
       .single();
       
     if (teamErr) throw teamErr;
-
+ 
     const { error: memberErr } = await supabase.from('team_members')
       .insert([{ team_id: team.id, user_id: user.id, role: 'leader', status: 'joined' }]);
       
@@ -52,12 +52,13 @@ export async function POST(req: NextRequest) {
       await supabase.from('teams').delete().eq('id', team.id);
       throw memberErr;
     }
-
-    return NextResponse.json({ id: team.id, name, creator_id: user.id });
+ 
+    return NextResponse.json({ id: team.id, name, creator_id: user.id, hackathon_id });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
+
 
 
